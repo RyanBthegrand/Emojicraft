@@ -39,7 +39,7 @@
 const PUZZLES = {
 
   // ── Featured / Default ─────────────────────────────────────────────────────
-"Default": {
+"default": {
 
 },
   // ── Past Puzzles ───────────────────────────────────────────────────────────
@@ -124,6 +124,7 @@ const PUZZLES = {
     { ingredients: ["s_4", "r_5"], result: { id: "s_5", emoji: "👶", name: "S" } }
   ],
   winItem: "s_5",
+  },
 
   "2026-05-30": {
     title: "Golden Years",
