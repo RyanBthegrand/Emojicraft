@@ -48,6 +48,43 @@ const PUZZLES = {
 
 
 
+
+
+  "2026-05-27": {
+    title: "Forest Brew",
+    startingItems: [
+      { id: "water",    emoji: "💧", name: "Water"    },
+      { id: "mushroom", emoji: "🍄", name: "Mushroom" },
+      { id: "fire_f",   emoji: "🔥", name: "Fire"     },
+      { id: "herb",     emoji: "🌿", name: "Herb"     },
+    ],
+    recipes: [
+      { ingredients: ["water",     "mushroom"],  result: { id: "mush_soup", emoji: "🍵", name: "Mushroom Soup"  } },
+      { ingredients: ["fire_f",    "mush_soup"], result: { id: "hot_soup",  emoji: "♨️",  name: "Hot Soup"       } },
+      { ingredients: ["herb",      "hot_soup"],  result: { id: "potion",    emoji: "🧪", name: "Healing Potion" } },
+    ],
+    winItem: "potion",
+  },
+
+  "2026-05-26": {
+    title: "Storm Season",
+    startingItems: [
+      { id: "cloud", emoji: "☁️",  name: "Cloud"     },
+      { id: "wind",  emoji: "💨", name: "Wind"      },
+      { id: "rain",  emoji: "🌧️",  name: "Rain"      },
+      { id: "bolt",  emoji: "⚡", name: "Lightning" },
+    ],
+    recipes: [
+      { ingredients: ["cloud",     "wind"],      result: { id: "storm",      emoji: "🌪️",  name: "Storm"       } },
+      { ingredients: ["rain",      "bolt"],      result: { id: "thunder",    emoji: "⛈️",  name: "Thunderstorm" } },
+      { ingredients: ["storm",     "thunder"],   result: { id: "hurricane",  emoji: "🌀", name: "Hurricane"   } },
+      { ingredients: ["hurricane", "bolt"],      result: { id: "superstorm", emoji: "🏆", name: "Superstorm"  } },
+    ],
+    winItem: "superstorm",
+  },
+
+  // ── Multi-result test puzzle ───────────────────────────────────────────────
+
   "2026-05-29": {
   title: "People",
   startingItems: [
@@ -87,68 +124,6 @@ const PUZZLES = {
     { ingredients: ["s_4", "r_5"], result: { id: "s_5", emoji: "👶", name: "S" } }
   ],
   winItem: "s_5",
-
-  "2026-05-27": {
-    title: "Forest Brew",
-    startingItems: [
-      { id: "water",    emoji: "💧", name: "Water"    },
-      { id: "mushroom", emoji: "🍄", name: "Mushroom" },
-      { id: "fire_f",   emoji: "🔥", name: "Fire"     },
-      { id: "herb",     emoji: "🌿", name: "Herb"     },
-    ],
-    recipes: [
-      { ingredients: ["water",     "mushroom"],  result: { id: "mush_soup", emoji: "🍵", name: "Mushroom Soup"  } },
-      { ingredients: ["fire_f",    "mush_soup"], result: { id: "hot_soup",  emoji: "♨️",  name: "Hot Soup"       } },
-      { ingredients: ["herb",      "hot_soup"],  result: { id: "potion",    emoji: "🧪", name: "Healing Potion" } },
-    ],
-    winItem: "potion",
-  },
-
-  "2026-05-26": {
-    title: "Storm Season",
-    startingItems: [
-      { id: "cloud", emoji: "☁️",  name: "Cloud"     },
-      { id: "wind",  emoji: "💨", name: "Wind"      },
-      { id: "rain",  emoji: "🌧️",  name: "Rain"      },
-      { id: "bolt",  emoji: "⚡", name: "Lightning" },
-    ],
-    recipes: [
-      { ingredients: ["cloud",     "wind"],      result: { id: "storm",      emoji: "🌪️",  name: "Storm"       } },
-      { ingredients: ["rain",      "bolt"],      result: { id: "thunder",    emoji: "⛈️",  name: "Thunderstorm" } },
-      { ingredients: ["storm",     "thunder"],   result: { id: "hurricane",  emoji: "🌀", name: "Hurricane"   } },
-      { ingredients: ["hurricane", "bolt"],      result: { id: "superstorm", emoji: "🏆", name: "Superstorm"  } },
-    ],
-    winItem: "superstorm",
-  },
-
-  // ── Multi-result test puzzle ───────────────────────────────────────────────
-
-  "2026-05-29": {
-    title: "Elemental Fusion",
-    startingItems: [
-      { id: "ef_water",   emoji: "💧", name: "Water"   },
-      { id: "ef_fire",    emoji: "🔥", name: "Fire"    },
-      { id: "ef_leaf",    emoji: "🌿", name: "Leaf"    },
-      { id: "ef_crystal", emoji: "💎", name: "Crystal" },
-    ],
-    recipes: [
-      // Multi-result: Fire + Crystal → Lava AND Smoke (both at once)
-      { ingredients: ["ef_fire",     "ef_crystal"], result: [
-          { id: "ef_lava",  emoji: "🌋", name: "Lava"  },
-          { id: "ef_smoke", emoji: "💨", name: "Smoke" },
-      ]},
-      // Multi-result: Water + Leaf → Tea AND Sprout (both at once)
-      { ingredients: ["ef_water",    "ef_leaf"],    result: [
-          { id: "ef_tea",    emoji: "🍵", name: "Tea"    },
-          { id: "ef_sprout", emoji: "🌱", name: "Sprout" },
-      ]},
-      // Single results from here on
-      { ingredients: ["ef_lava",     "ef_water"],   result: { id: "ef_mountain", emoji: "⛰️",  name: "Mountain" } },
-      { ingredients: ["ef_tea",      "ef_smoke"],   result: { id: "ef_mist",     emoji: "🌫️",  name: "Mist"     } },
-      { ingredients: ["ef_mountain", "ef_mist"],    result: { id: "ef_rainbow",  emoji: "🌈", name: "Rainbow"  } },
-    ],
-    winItem: "ef_rainbow",
-  },
 
   "2026-05-30": {
     title: "Golden Years",
