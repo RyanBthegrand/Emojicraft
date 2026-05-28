@@ -40,6 +40,15 @@ const PUZZLES = {
 
   // ── Featured / Default ─────────────────────────────────────────────────────
 "Default": {
+
+},
+  // ── Past Puzzles ───────────────────────────────────────────────────────────
+
+
+
+
+
+  "2026-05-28": {
   title: "People",
   startingItems: [
     { id: "b", emoji: "👩‍🦳", name: "B" },
@@ -78,28 +87,6 @@ const PUZZLES = {
     { ingredients: ["s_4", "r_5"], result: { id: "s_5", emoji: "👶", name: "S" } }
   ],
   winItem: "s_5",
-},
-  // ── Past Puzzles ───────────────────────────────────────────────────────────
-
-
-
-
-
-  "2026-05-28": {
-    title: "Ocean Depths",
-    startingItems: [
-      { id: "wave",   emoji: "🌊", name: "Wave"   },
-      { id: "fish",   emoji: "🐟", name: "Fish"   },
-      { id: "sun_o",  emoji: "☀️",  name: "Sun"    },
-      { id: "anchor", emoji: "⚓", name: "Anchor" },
-    ],
-    recipes: [
-      { ingredients: ["fish",         "anchor"],  result: { id: "fishing_boat", emoji: "🚢", name: "Fishing Boat"    } },
-      { ingredients: ["wave",         "sun_o"],   result: { id: "rainbow",      emoji: "🌈", name: "Rainbow"         } },
-      { ingredients: ["fishing_boat", "rainbow"], result: { id: "legend_catch", emoji: "🏆", name: "Legendary Catch" } },
-    ],
-    winItem: "legend_catch",
-  },
 
   "2026-05-27": {
     title: "Forest Brew",
