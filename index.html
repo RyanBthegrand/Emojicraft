@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alchemix</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚗️</text></svg>">
+
+<!-- Twemoji — iOS-style cross-platform emojis -->
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+
+<style>
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Theme Variables (Great Canyon default) ──────────────────────────────── */
+:root {
+  /* Canyon palette – warm orange/rust */
+  --bg:          #FDF4EB;
+  --surface:     #FFFFFF;
+  --border:      #D4905A;
+  --border-lt:   #EEC898;
+  --text:        #2A1008;
+  --muted:       #7A4020;
+  --accent:      #C07030;
+  --accent-dk:   #8C4A20;
+  --glow:        rgba(192,112,48,.38);
+  --hdr-from:    #180806;
+  --hdr-to:      #5C2A18;
+  --hdr-accent:  #C07030;
+  --hdr-muted:   rgba(238,184,104,.55);
+
+  /* Discovery tints — same across themes */
+  --d1: #FEF9C3; --d1b: #FDE68A;
+  --d2: #D1FAE5; --d2b: #6EE7B7;
+  --d3: #DBEAFE; --d3b: #93C5FD;
+  --d4: #EDE9FE; --d4b: #C4B5FD;
+  --d5: #FCE7F3; --d5b: #F9A8D4;
+}
+
+/* ── Twemoji sizing ──────────────────────────────────────────────────────── */
+img.emoji {
+  display: inline-block;
+  width: 1em; height: 1em;
+  vertical-align: -.1em;
+  margin: 0 !important;
+}
+.card-emoji    img.emoji { width: clamp(1.8rem,6vw,3.1rem); height: clamp(1.8rem,6vw,3.1rem); vertical-align: middle; }
+.disc-inner    img.emoji { width: 1.65rem; height: 1.65rem; vertical-align: middle; }
+.splash-emoji  img.emoji { width: 4.8rem;  height: 4.8rem;  vertical-align: middle; }
+.win-icon      img.emoji { width: 5.2rem;  height: 5.2rem;  vertical-align: middle; }
+.arc-emojis    img.emoji { width: 1.35rem; height: 1.35rem; vertical-align: middle; }
+
+/* ── Site Banner (Dota 2 news style) ──────────────────────────────────────── */
+.site-banner {
+  width: 100%;
+  background: linear-gradient(175deg, var(--hdr-from) 0%, var(--hdr-to) 100%);
+  border-bottom: 2px solid rgba(255,255,255,.07);
+  position: relative;
+  overflow: visible;
+}
+/* Subtle texture overlay */
+.site-banner::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 120% 80% at 60% 0%, rgba(255,255,255,.04), transparent 70%);
+  pointer-events: none;
+}
+
+.banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px 14px;
+  max-width: 1100px;
+  margin: 0 auto;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.banner-logo {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.banner-logo span { color: var(--hdr-muted); font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Archive dropdown */
+.archive-dropdown-wrap { position: relative; }
+.archive-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 13px 7px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #fff; cursor: pointer; font-family: inherit;
+  transition: background .18s, border-color .18s;
+  white-space: nowrap;
+}
+.archive-btn:hover { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.35); }
+.archive-btn-emoji { font-size: 1.35rem; line-height: 1; display: flex; align-items: center; }
+.archive-btn-emoji img.emoji { width: 1.35rem !important; height: 1.35rem !important; }
+.archive-btn-name  { font-size: .76rem; font-weight: 700; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.archive-chevron   { font-size: .7rem; color: rgba(255,255,255,.55); transition: transform .2s; margin-left: 2px; }
+.archive-dropdown-wrap.open .archive-chevron { transform: rotate(180deg); }
+
+.archive-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 230px;
+  background: color-mix(in srgb, var(--hdr-from) 70%, var(--hdr-to));
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px; overflow: hidden;
+  display: none; z-index: 200;
+  box-shadow: 0 14px 46px rgba(0,0,0,.55);
+}
+.archive-dropdown-wrap.open .archive-dropdown { display: block; }
+
+.arc-drop-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer; width: 100%; text-align: left;
+  background: none; border: none;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  font-family: inherit; color: rgba(255,255,255,.82);
+  transition: background .14s;
+}
+.arc-drop-item:last-child { border-bottom: none; }
+.arc-drop-item:hover  { background: rgba(255,255,255,.1); }
+.arc-drop-item.active { background: rgba(255,255,255,.13); }
+.arc-drop-emoji { font-size: 1.45rem; line-height: 1; flex-shrink: 0; display: flex; align-items: center; }
+.arc-drop-emoji img.emoji { width: 1.45rem !important; height: 1.45rem !important; }
+.arc-drop-info  { flex: 1; min-width: 0; }
+.arc-drop-name  { font-size: .82rem; font-weight: 700; color: rgba(255,255,255,.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arc-drop-date  { font-size: .64rem; color: rgba(255,255,255,.42); margin-top: 2px; }
+.arc-drop-dot   { width: 7px; height: 7px; border-radius: 50%; background: var(--hdr-accent); flex-shrink: 0; }
+
+/* ── Body / Layout ───────────────────────────────────────────────────────── */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+header {
+  width: min(600px, calc(100vw - 32px));
+  padding: 22px 0 0;
+  text-align: center;
+}
+.puzzle-name  { font-size: .92rem; color: var(--muted); font-weight: 600; margin-top: 4px; }
+.date-label   { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+.timer-row {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 10px;
+}
+.timer-display {
+  font-size: 1.55rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text); min-width: 68px; text-align: center;
+  transition: color .4s;
+}
+.timer-display.running { color: var(--accent); }
+
+.challenge-banner {
+  display: none; align-items: center; justify-content: center;
+  gap: 8px; margin-top: 10px;
+  padding: 7px 18px;
+  background: linear-gradient(90deg, var(--hdr-from), var(--hdr-to));
+  border: 1px solid var(--border-lt);
+  border-radius: 10px;
+  color: rgba(255,255,255,.9); font-size: .82rem; font-weight: 600;
+}
+.challenge-banner.active { display: flex; }
+.cb-time { font-weight: 800; color: var(--hdr-muted); }
+
+.hint-bar {
+  margin-top: 12px; padding: 7px 14px;
+  background: rgba(0,0,0,.05); border-radius: 8px;
+  font-size: .77rem; color: var(--muted);
+}
+
+main {
+  width: min(600px, calc(100vw - 32px));
+  padding: 20px 0 36px; flex: 1;
+}
+
+/* ── Card Grid ──────────────────────────────────────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 480px) {
+  .cards-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid var(--border-lt);
+  background: var(--surface);
+  cursor: grab;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: transform .14s, box-shadow .14s, border-color .14s, background .2s, opacity .2s;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.card:hover:not(.selected):not(.win-card):not(.dragging):not(.drag-target) {
+  transform: translateY(-3px) scale(1.025);
+  box-shadow: 0 6px 18px rgba(0,0,0,.1);
+  border-color: var(--border);
+}
+.card.selected {
+  background: var(--accent) !important;
+  border-color: var(--accent-dk) !important;
+  transform: translateY(-5px) scale(1.06) !important;
+  box-shadow: 0 10px 28px var(--glow) !important;
+  z-index: 2; cursor: grab;
+}
+.card.selected .card-label { color: rgba(255,255,255,.92); }
+
+/* Drag states */
+.card.dragging    { opacity: .28 !important; transform: scale(.93) !important; cursor: grabbing; }
+.card.drag-target {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 3px rgba(34,197,94,.3), 0 8px 24px rgba(34,197,94,.2) !important;
+  transform: scale(1.08) !important; background: #dcfce7 !important; z-index: 2;
+}
+
+/* Discovered cards share the same white surface as starting cards */
+
+.card.flash-fail    { animation: shake .45s ease !important; background: #FEE2E2 !important; border-color: #FCA5A5 !important; }
+.card.flash-success { background: #D1FAE5 !important; border-color: #6EE7B7 !important; }
+.card.flash-known   { background: #F3F4F6 !important; border-color: #D1D5DB !important; }
+
+.card.entering { animation: cardDiscover .6s cubic-bezier(.34,1.4,.64,1) forwards !important; }
+.card.win-card {
+  background: linear-gradient(135deg, #FFD700, #FFAC00) !important;
+  border-color: #E09000 !important;
+  box-shadow: 0 8px 26px rgba(255,165,0,.45) !important;
+}
+.card.win-card .card-label { color: #5A3500; font-weight: 800; }
+
+/* Card internals */
+.card-emoji {
+  height: 80%; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(1.8rem,6vw,3.1rem); line-height: 1; pointer-events: none;
+}
+.card-bottom {
+  height: 20%; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.04); padding: 0 4px;
+}
+.card-label {
+  font-size: clamp(.5rem,1.5vw,.68rem); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  width: 100%; pointer-events: none;
+}
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed; pointer-events: none; z-index: 400;
+  transform: rotate(7deg) scale(1.1);
+  box-shadow: 0 20px 50px rgba(0,0,0,.28);
+  opacity: .95; border-radius: 12px; overflow: hidden;
+  transition: none !important;
+}
+
+/* ── Discovery Panel ──────────────────────────────────────────────────────── */
+.discovery-panel {
+  margin-top: 22px; padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-lt);
+  border-radius: 14px;
+}
+.disc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.disc-label {
+  font-size: .68rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted);
+}
+.disc-count {
+  font-size: .7rem; font-weight: 800; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: 3px 10px; border-radius: 99px;
+}
+.disc-circles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+.disc-circle  { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.disc-inner {
+  width: 80px; height: 80px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.8rem; transition: transform .3s, background .3s, box-shadow .3s;
+  overflow: hidden;
+}
+/* Twemoji image fills the circle for found items */
+.disc-circle.found .disc-inner img.emoji {
+  width: 58px !important; height: 58px !important; vertical-align: middle;
+}
+.disc-circle.unknown .disc-inner {
+  background: #E5E7EB; border: 2px dashed #D1D5DB;
+  font-size: 1.3rem; color: #9CA3AF; font-weight: 800;
+}
+.disc-circle.found .disc-inner {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.disc-name-label {
+  font-size: .55rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted);
+  max-width: 80px; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  opacity: 0; transition: opacity .4s .2s;
+}
+.disc-circle.found .disc-name-label { opacity: 1; }
+.disc-circle.disc-revealing .disc-inner { animation: circleReveal .6s cubic-bezier(.34,1.56,.64,1) forwards; }
+
+/* ── Status / Stats ───────────────────────────────────────────────────────── */
+.status-bar {
+  margin-top: 16px; text-align: center; min-height: 36px;
+  display: flex; align-items: center; justify-content: center;
+}
+.status-pill {
+  display: inline-block; padding: 7px 20px; border-radius: 99px;
+  font-size: .84rem; font-weight: 600;
+  transition: background .2s, color .2s;
+}
+.status-pill.hint    { background: rgba(0,0,0,.07);                         color: var(--muted); }
+.status-pill.success { background: #D1FAE5;                                  color: #065F46; }
+.status-pill.fail    { background: #FEE2E2;                                  color: #991B1B; }
+.status-pill.known   { background: #F3F4F6;                                  color: #374151; }
+.status-pill.win     { background: linear-gradient(90deg,#FFD700,#FFAC00);  color: #5A3500; }
+
+.stats-row {
+  display: flex; justify-content: center; gap: 28px;
+  margin-top: 12px; font-size: .78rem; color: var(--muted);
+}
+.stats-row b { font-weight: 700; color: var(--text); }
+
+/* ── Discovery Splash ─────────────────────────────────────────────────────── */
+.disc-splash {
+  position: fixed; top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 300;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  animation: splashAnim 1.4s cubic-bezier(.22,1,.36,1) forwards;
+}
+.splash-emoji { font-size: 4.8rem; line-height: 1; filter: drop-shadow(0 4px 22px rgba(255,165,0,.6)); }
+.splash-label { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .2em; color: var(--accent); }
+.splash-name  { font-size: 1.45rem; font-weight: 800; color: var(--text); }
+
+/* ── Win overlay ──────────────────────────────────────────────────────────── */
+.win-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; opacity: 0; pointer-events: none;
+  transition: opacity .35s; padding: 16px;
+}
+.win-overlay.open { opacity: 1; pointer-events: all; }
+.win-modal {
+  background: var(--surface); border-radius: 22px;
+  padding: 36px 40px; text-align: center;
+  max-width: 380px; width: 100%;
+  transform: scale(.8);
+  transition: transform .42s cubic-bezier(.34,1.56,.64,1);
+  border: 1px solid var(--border-lt);
+}
+.win-overlay.open .win-modal { transform: scale(1); }
+.win-icon    { font-size: 5.2rem; display: block; margin-bottom: 12px; animation: bounceIn .6s cubic-bezier(.34,1.56,.64,1) .3s both; }
+.win-heading { font-size: 2rem; font-weight: 800; margin-bottom: 6px; }
+.win-sub     { color: var(--muted); font-size: .88rem; margin-bottom: 4px; }
+.win-time    { font-size: 1.4rem; font-weight: 800; color: var(--accent); margin-bottom: 18px; }
+.win-stats   { background: rgba(0,0,0,.04); border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; text-align: left; }
+.win-stat-row{ display: flex; justify-content: space-between; font-size: .875rem; padding: 3px 0; }
+.win-stat-row b { font-weight: 700; }
+
+.challenge-result { display: none; margin-bottom: 14px; padding: 10px 16px; border-radius: 10px; font-size: .88rem; font-weight: 700; }
+.challenge-result.beaten { background: #D1FAE5; color: #166534; display: block; }
+.challenge-result.failed { background: #FEE2E2; color: #991B1B; display: block; }
+
+.win-buttons { display: flex; gap: 10px; }
+.win-btn {
+  flex: 1; padding: 13px; border: none; border-radius: 12px;
+  font-size: .88rem; font-weight: 700; cursor: pointer;
+  transition: background .15s, transform .1s; font-family: inherit;
+}
+.win-btn:active { transform: scale(.97); }
+.win-btn-primary { background: var(--accent); color: #fff; }
+.win-btn-primary:hover { background: var(--accent-dk); }
+.win-btn-share   { background: var(--hdr-to); color: rgba(255,255,255,.92); }
+.win-btn-share:hover { filter: brightness(1.2); }
+.share-confirm   { font-size: .75rem; color: #22C55E; font-weight: 700; margin-top: 8px; opacity: 0; transition: opacity .3s; }
+.share-confirm.show { opacity: 1; }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+footer { padding: 16px; font-size: .75rem; color: var(--muted); }
+footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
+footer a:hover { text-decoration: underline; }
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes cardInitial {
+  from { opacity: 0; transform: translateY(38px) scale(.88); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cardDiscover {
+  0%   { opacity: 0; transform: translateY(90px) scale(.38) rotate(-8deg); filter: brightness(3); }
+  35%  { opacity: 1; filter: brightness(1.7); }
+  65%  { transform: translateY(-14px) scale(1.07) rotate(2deg); filter: brightness(1.1); }
+  82%  { transform: translateY(0) scale(1.02) rotate(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); filter: brightness(1); }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-7px); }
+  30%     { transform: translateX(7px); }
+  50%     { transform: translateX(-5px); }
+  70%     { transform: translateX(5px); }
+  85%     { transform: translateX(-2px); }
+}
+@keyframes circleReveal {
+  0%   { transform: scale(0) rotate(-180deg); }
+  60%  { transform: scale(1.3) rotate(12deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes splashAnim {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
+  18%  { opacity: 1; transform: translate(-50%,-50%) scale(1.08); }
+  55%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(.9) translateY(-40px); }
+}
+@keyframes bounceIn {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+@keyframes particleOut {
+  from { transform: translate(0,0) scale(1); opacity: 1; }
+  to   { transform: translate(var(--dx),var(--dy)) scale(0); opacity: 0; }
+}
+@keyframes confettiFall {
+  to { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Site Banner ──────────────────────────────────────────────────────── -->
+<div class="site-banner">
+  <div class="banner-top">
+    <div class="banner-logo">
+      ⚗️ ALCHEMIX
+      <span>Daily Puzzle</span>
+    </div>
+    <div class="archive-dropdown-wrap" id="archiveDropdownWrap">
+      <button class="archive-btn" id="archiveBtn" onclick="toggleArchiveDropdown(event)">
+        <span class="archive-btn-emoji" id="archiveBtnEmoji"></span>
+        <span class="archive-btn-name"  id="archiveBtnName"></span>
+        <span class="archive-chevron">▾</span>
+      </button>
+      <div class="archive-dropdown" id="archiveDropdown"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Game Header ──────────────────────────────────────────────────────── -->
+<header>
+  <div class="puzzle-name" id="puzzleName"></div>
+  <div class="date-label"  id="dateLabel"></div>
+  <div class="timer-row">
+    <span>⏱</span>
+    <span class="timer-display" id="timerDisplay">0:00</span>
+  </div>
+  <div class="challenge-banner" id="challengeBanner">
+    ⚡ Challenge: beat <span class="cb-time" id="challengeTarget"></span>
+  </div>
+  <div class="hint-bar">Click to select then click again to combine — or drag one card onto another.</div>
+</header>
+
+<!-- ── Game Board ───────────────────────────────────────────────────────── -->
+<main>
+  <div class="cards-grid" id="grid"></div>
+
+  <div class="discovery-panel">
+    <div class="disc-header">
+      <span class="disc-label">Discoveries</span>
+      <span class="disc-count" id="discCountEl">0 / 0</span>
+    </div>
+    <div class="disc-circles" id="discCircles"></div>
+  </div>
+
+  <div class="status-bar">
+    <span class="status-pill hint" id="status">Select a card to begin</span>
+  </div>
+  <div class="stats-row">Attempts: <b id="statAtt">0</b></div>
+</main>
+
+<!-- ── Win Modal ────────────────────────────────────────────────────────── -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-modal">
+    <span class="win-icon"    id="winIcon">🏆</span>
+    <div  class="win-heading">You Won!</div>
+    <div  class="win-sub"     id="winSub"></div>
+    <div  class="win-time"    id="winTime"></div>
+    <div  class="challenge-result" id="challengeResult"></div>
+    <div  class="win-stats">
+      <div class="win-stat-row"><span>Discoveries</span><b id="wDisc"></b></div>
+      <div class="win-stat-row"><span>Attempts</span>   <b id="wAtt"></b></div>
+    </div>
+    <div class="win-buttons">
+      <button class="win-btn win-btn-share"   onclick="shareChallenge()">⚡ Challenge Friend</button>
+      <button class="win-btn win-btn-primary" onclick="restart()">Play Again ↻</button>
+    </div>
+    <div class="share-confirm" id="shareConfirm">Link copied!</div>
+  </div>
+</div>
+
+<footer><a href="editor.html">✏️ Create a Puzzle</a></footer>
+
+<!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
+<script src="puzzles.js?v=20260529d"></script>
+<script>
+// ── Theme system ──────────────────────────────────────────────────────────────
+const THEMES = {
+  canyon: {
+    '--bg':        '#FDF4EB', '--surface':   '#FFFFFF',
+    '--border':    '#D4905A', '--border-lt': '#EEC898',
+    '--text':      '#2A1008', '--muted':     '#7A4020',
+    '--accent':    '#C07030', '--accent-dk': '#8C4A20',
+    '--glow':      'rgba(192,112,48,.38)',
+    '--hdr-from':  '#180806', '--hdr-to':    '#5C2A18',
+    '--hdr-accent':'#C07030', '--hdr-muted': 'rgba(238,184,104,.6)',
+  },
+  frost: {
+    '--bg':        '#EBF1FC', '--surface':   '#F7FAFF',
+    '--border':    '#8898C8', '--border-lt': '#B8C8E8',
+    '--text':      '#0C1430', '--muted':     '#445880',
+    '--accent':    '#5868A8', '--accent-dk': '#3A4890',
+    '--glow':      'rgba(88,104,168,.38)',
+    '--hdr-from':  '#060810', '--hdr-to':    '#1A2850',
+    '--hdr-accent':'#7888B8', '--hdr-muted': 'rgba(184,200,232,.65)',
+  },
+};
+
+function applyTheme(name) {
+  const t = THEMES[name]; if (!t) return;
+  const r = document.documentElement;
+  Object.entries(t).forEach(([k,v]) => r.style.setProperty(k, v));
+  localStorage.setItem('alchemix-theme', name);
+}
+function initTheme() {
+  applyTheme(localStorage.getItem('alchemix-theme') || 'canyon');
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const G = {
+  puzzle: null, puzzleKey: 'default',
+  items: [], selected: null,
+  attempts: 0, discoveries: 0,
+  lastRevealedIds: new Set(), won: false,
+  challengeTarget: 0,
+};
+const T = { start: 0, interval: null, running: false, elapsed: 0 };
+const drag = {
+  down: false, active: false, id: null, clone: null,
+  startX: 0, startY: 0, offsetX: 0, offsetY: 0, hoverTarget: null,
+};
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+const localDate  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const fmtDate    = s  => new Date(s+'T12:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const fmtTime    = ms => { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
+const esc        = id => CSS.escape(id);
+const findItem   = id => G.items.find(i=>i.id===id);
+// Returns array of result items (supports both single-object and array result formats)
+const findRecipe = (a,b) => {
+  const r = G.puzzle.recipes.find(r =>
+    (r.ingredients[0]===a&&r.ingredients[1]===b)||(r.ingredients[0]===b&&r.ingredients[1]===a));
+  if (!r) return null;
+  return Array.isArray(r.result) ? r.result : [r.result];
+};
+// Returns the items that appear in the discoveries panel.
+// Single-result recipes: always the one result.
+// Multi-result recipes: items marked panel:true, or the first item as a fallback
+// (so old puzzles without the panel flag continue to work unchanged).
+function getAllResultItems() {
+  return G.puzzle.recipes.flatMap(r => {
+    const results = Array.isArray(r.result) ? r.result : [r.result];
+    if (results.length === 1) return [results[0]];
+    const panelItems = results.filter(res => res.panel === true);
+    return panelItems.length > 0 ? panelItems : [results[0]];
+  });
+}
+
+function parseEmojis(el) {
+  if (typeof twemoji === 'undefined' || !el) return;
+  twemoji.parse(el, { folder:'svg', ext:'.svg',
+    base:'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+}
+
+// ── Archive ───────────────────────────────────────────────────────────────────
+function getArchivePuzzles() {
+  const dated = Object.entries(PUZZLES)
+    .filter(([k]) => k !== 'default')
+    .sort(([a],[b]) => b.localeCompare(a));
+  return [...dated, ['default', PUZZLES['default']]];
+}
+
+function archiveDate(key) {
+  if (key === 'default') return 'Classic';
+  const today = localDate();
+  const yDate = new Date(); yDate.setDate(yDate.getDate()-1);
+  const yStr  = `${yDate.getFullYear()}-${String(yDate.getMonth()+1).padStart(2,'0')}-${String(yDate.getDate()).padStart(2,'0')}`;
+  if (key === today)  return 'Today';
+  if (key === yStr)   return 'Yesterday';
+  return new Date(key+'T12:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+}
+
+function toggleArchiveDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('archiveDropdownWrap').classList.toggle('open');
+}
+function closeArchiveDropdown() {
+  document.getElementById('archiveDropdownWrap').classList.remove('open');
+}
+
+function renderArchive() {
+  const puzzle = G.puzzle;
+  // Update button: first starting item emoji + title
+  const btnEmoji = puzzle.startingItems[0]?.emoji ?? '⚗️';
+  document.getElementById('archiveBtnEmoji').textContent = btnEmoji;
+  document.getElementById('archiveBtnName').textContent  = puzzle.title;
+  parseEmojis(document.getElementById('archiveBtn'));
+
+  // Build dropdown items
+  const dd = document.getElementById('archiveDropdown');
+  dd.innerHTML = '';
+  getArchivePuzzles().forEach(([key, puz]) => {
+    const isActive = key === G.puzzleKey;
+    const btn = document.createElement('button');
+    btn.className = 'arc-drop-item' + (isActive ? ' active' : '');
+    const emoji = puz.startingItems[0]?.emoji ?? '⚗️';
+    btn.innerHTML = `
+      <span class="arc-drop-emoji">${emoji}</span>
+      <span class="arc-drop-info">
+        <div class="arc-drop-name">${puz.title}</div>
+        <div class="arc-drop-date">${archiveDate(key)}</div>
+      </span>
+      ${isActive ? '<span class="arc-drop-dot"></span>' : ''}`;
+    btn.addEventListener('click', () => { loadPuzzleByKey(key); closeArchiveDropdown(); });
+    dd.appendChild(btn);
+  });
+  parseEmojis(dd);
+}
+
+function loadPuzzleByKey(key) {
+  if (!PUZZLES[key]) return;
+  G.puzzleKey = key;
+  G.puzzle = PUZZLES[key];
+  G.items = G.puzzle.startingItems.map(i=>({...i,disc:0,isWin:false,entering:false}));
+  G.selected=null; G.attempts=0; G.discoveries=0; G.lastRevealedIds=new Set(); G.won=false;
+  stopTimer();
+  T.elapsed=0;
+  document.getElementById('timerDisplay').textContent='0:00';
+  document.getElementById('timerDisplay').classList.remove('running');
+  document.getElementById('puzzleName').textContent = G.puzzle.title;
+  const keyIsDate = /^\d{4}-\d{2}-\d{2}$/.test(key);
+  document.getElementById('dateLabel').textContent = keyIsDate ? fmtDate(key) : 'Featured Puzzle';
+  document.getElementById('winOverlay').classList.remove('open');
+  render();
+  renderArchive();
+  // Staggered slide-in only on fresh puzzle load
+  document.querySelectorAll('.card').forEach((c,i) =>
+    c.style.animation = `cardInitial .5s cubic-bezier(.22,1,.36,1) ${i*60}ms backwards`);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  initTheme();
+  const params   = new URLSearchParams(window.location.search);
+  const pParam   = params.get('puzzle');
+  const cParam   = parseInt(params.get('challenge') || '0');
+  const today    = localDate();
+  G.puzzleKey    = pParam && PUZZLES[pParam] ? pParam : (PUZZLES[today] ? today : 'default');
+  G.puzzle       = PUZZLES[G.puzzleKey];
+  G.items        = G.puzzle.startingItems.map(i=>({...i,disc:0,isWin:false,entering:false}));
+  G.selected=null; G.attempts=0; G.discoveries=0; G.lastRevealedIds=new Set(); G.won=false;
+  G.challengeTarget = cParam * 1000;
+
+  stopTimer(); T.elapsed=0;
+  document.getElementById('timerDisplay').textContent='0:00';
+  document.getElementById('timerDisplay').classList.remove('running');
+  document.getElementById('puzzleName').textContent = G.puzzle.title;
+  const keyIsDate = /^\d{4}-\d{2}-\d{2}$/.test(G.puzzleKey);
+  document.getElementById('dateLabel').textContent  = keyIsDate ? fmtDate(G.puzzleKey) : 'Featured Puzzle';
+  document.getElementById('winOverlay').classList.remove('open');
+
+  if (G.challengeTarget > 0) {
+    document.getElementById('challengeTarget').textContent = fmtTime(G.challengeTarget);
+    document.getElementById('challengeBanner').classList.add('active');
+  } else {
+    document.getElementById('challengeBanner').classList.remove('active');
+  }
+
+  render();
+  renderArchive();
+  // Staggered slide-in on first load
+  document.querySelectorAll('.card').forEach((c,i) =>
+    c.style.animation = `cardInitial .5s cubic-bezier(.22,1,.36,1) ${i*60}ms backwards`);
+  // Close archive dropdown if user clicks outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.archive-dropdown-wrap')) closeArchiveDropdown();
+  }, { once: false });
+}
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+function startTimer() {
+  if (T.running) return;
+  T.running=true; T.start=Date.now();
+  document.getElementById('timerDisplay').classList.add('running');
+  T.interval = setInterval(() => {
+    document.getElementById('timerDisplay').textContent = fmtTime(Date.now()-T.start);
+  }, 250);
+}
+function stopTimer() {
+  if (!T.running) return;
+  clearInterval(T.interval); T.elapsed=Date.now()-T.start; T.running=false;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  G.items.forEach(item => grid.appendChild(buildCard(item)));
+  renderDiscPanel();
+  document.getElementById('statAtt').textContent = G.attempts;
+  parseEmojis(grid);
+  parseEmojis(document.getElementById('discCircles'));
+}
+
+function buildCard(item) {
+  const el = document.createElement('div');
+  const cls = ['card'];
+  if (item.isWin)            cls.push('win-card');
+  if (item.entering)         cls.push('entering');
+  if (item.id === G.selected) cls.push('selected');
+  el.className = cls.join(' ');
+  el.dataset.id = item.id;
+  if (item.disc>0 && !item.isWin) el.dataset.disc = Math.min(item.disc,5);
+  el.setAttribute('role','button'); el.setAttribute('tabindex','0'); el.setAttribute('aria-label',item.name);
+  el.innerHTML = `<div class="card-emoji">${item.emoji}</div>
+    <div class="card-bottom"><span class="card-label">${item.name}</span></div>`;
+  el.addEventListener('pointerdown', e => onCardPointerDown(e, item.id));
+  el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(item.id);} });
+  return el;
+}
+
+function renderDiscPanel() {
+  const allResults = getAllResultItems();
+  const total      = allResults.length;
+  const el         = document.getElementById('discCircles');
+  el.innerHTML = '';
+  allResults.forEach(resultItem => {
+    const found = G.items.find(it => it.id === resultItem.id && it.disc > 0);
+    const isNew = found && G.lastRevealedIds.has(found.id);
+    const wrap  = document.createElement('div');
+    wrap.className = 'disc-circle ' + (found ? 'found' : 'unknown');
+    if (found) wrap.dataset.disc = Math.min(found.disc, 5);
+    if (isNew) wrap.classList.add('disc-revealing');
+    const inner = document.createElement('div'); inner.className = 'disc-inner';
+    inner.textContent = found ? found.emoji : '?';
+    const lbl = document.createElement('div'); lbl.className = 'disc-name-label';
+    lbl.textContent = found ? found.name : '';
+    wrap.appendChild(inner); wrap.appendChild(lbl); el.appendChild(wrap);
+  });
+  const tracked = allResults.filter(r => G.items.some(i => i.id === r.id && i.disc > 0)).length;
+  document.getElementById('discCountEl').textContent = `${tracked} / ${total}`;
+}
+
+// ── Pointer drag ──────────────────────────────────────────────────────────────
+function onCardPointerDown(e, id) {
+  if (G.won) return;
+  e.currentTarget.setPointerCapture(e.pointerId);
+  drag.down=true; drag.active=false; drag.id=id;
+  drag.startX=e.clientX; drag.startY=e.clientY;
+  const r=e.currentTarget.getBoundingClientRect();
+  drag.offsetX=e.clientX-r.left; drag.offsetY=e.clientY-r.top;
+}
+document.addEventListener('pointermove', e => {
+  if (!drag.down) return;
+  const dx=e.clientX-drag.startX, dy=e.clientY-drag.startY;
+  if (!drag.active && Math.hypot(dx,dy)>8) {
+    drag.active=true; G.selected=null;
+    const src=document.querySelector(`[data-id="${esc(drag.id)}"]`);
+    if (src) {
+      const r=src.getBoundingClientRect();
+      const gh=src.cloneNode(true);
+      gh.className='card drag-ghost';
+      gh.style.cssText+=`;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+      document.body.appendChild(gh);
+      drag.clone=gh; src.classList.add('dragging');
+    }
+  }
+  if (drag.active && drag.clone) {
+    drag.clone.style.left=(e.clientX-drag.offsetX)+'px';
+    drag.clone.style.top =(e.clientY-drag.offsetY)+'px';
+    drag.clone.style.pointerEvents='none';
+    const under=document.elementFromPoint(e.clientX,e.clientY);
+    drag.clone.style.pointerEvents='';
+    const tgt=under?.closest?.('.card');
+    const valid=tgt&&tgt.dataset.id!==drag.id?tgt:null;
+    if (drag.hoverTarget!==valid) {
+      drag.hoverTarget?.classList.remove('drag-target');
+      drag.hoverTarget=valid;
+      drag.hoverTarget?.classList.add('drag-target');
+    }
+  }
+});
+document.addEventListener('pointerup', e => {
+  if (!drag.down) return;
+  const {id,active,hoverTarget} = endDrag();
+  if (active) { if (hoverTarget?.dataset.id && hoverTarget.dataset.id!==id) combineItems(id,hoverTarget.dataset.id); }
+  else pick(id);
+});
+document.addEventListener('pointercancel', endDrag);
+function endDrag() {
+  const s={id:drag.id,active:drag.active,hoverTarget:drag.hoverTarget};
+  drag.down=false; drag.active=false;
+  drag.hoverTarget?.classList.remove('drag-target'); drag.hoverTarget=null;
+  drag.clone?.remove(); drag.clone=null;
+  if (drag.id) document.querySelector(`[data-id="${esc(drag.id)}"]`)?.classList.remove('dragging');
+  drag.id=null;
+  return s;
+}
+
+// ── Game logic ────────────────────────────────────────────────────────────────
+function pick(id) {
+  if (G.won) return;
+  startTimer();
+  if (!G.selected) { G.selected=id; render(); setStatus(`${findItem(id)?.name} selected — pick another card`,'hint'); return; }
+  if (G.selected===id) { G.selected=null; render(); setStatus('Select a card to begin','hint'); return; }
+  const a=G.selected; G.selected=null; combineItems(a,id);
+}
+
+function combineItems(a,b) {
+  if (G.won) return;
+  startTimer(); G.attempts++;
+  const results = findRecipe(a,b);
+  if (!results) { render(); flash([a,b],'flash-fail'); setStatus("Those don't combine…",'fail',2200); return; }
+  // Only keep results not yet discovered
+  const newResults = results.filter(r => !G.items.some(i=>i.id===r.id));
+  if (newResults.length === 0) {
+    const names = results.map(r=>r.name).join(' & ');
+    render(); flash([a,b],'flash-known'); setStatus(`Already know how to make ${names}.`,'known',2200); return;
+  }
+  const newItems = [];
+  newResults.forEach(result => {
+    G.discoveries++;
+    const isWin = result.id === G.puzzle.winItem;
+    const newItem = {...result, disc:G.discoveries, isWin, entering:true};
+    G.items.push(newItem);
+    newItems.push(newItem);
+  });
+  G.lastRevealedIds = new Set(newResults.map(r=>r.id));
+  render(); G.lastRevealedIds = new Set();
+  flash([a,b],'flash-success');
+  [a,b].forEach(id => spawnParticles(document.querySelector(`[data-id="${esc(id)}"]`)));
+  // Staggered splashes for each new result
+  newResults.forEach((result,i) => setTimeout(()=>showSplash(result.emoji,result.name), i*350));
+  setTimeout(()=>{ newItems.forEach(ni=>{ ni.entering=false; }); }, 600);
+  const winResult = newResults.find(r=>r.id===G.puzzle.winItem);
+  if (winResult) {
+    setStatus(`${winResult.emoji} ${winResult.name} — Victory!`,'win');
+    setTimeout(()=>{stopTimer();showWin();},1000);
+  } else if (newResults.length===1) {
+    setStatus(`${newResults[0].emoji} Discovered: ${newResults[0].name}!`,'success',2600);
+  } else {
+    setStatus(`✨ Discovered ${newResults.length} new items!`,'success',2600);
+  }
+}
+
+function flash(ids,cls) {
+  ids.forEach(id=>{
+    const el=document.querySelector(`[data-id="${esc(id)}"]`); if(!el) return;
+    el.classList.add(cls); setTimeout(()=>el.classList.remove(cls),700);
+  });
+}
+
+let _st;
+function setStatus(text,type='hint',dur) {
+  const el=document.getElementById('status');
+  el.textContent=text; el.className=`status-pill ${type}`;
+  clearTimeout(_st);
+  if(dur) _st=setTimeout(()=>{
+    const sel=G.selected?findItem(G.selected):null;
+    el.textContent=sel?`${sel.name} selected — pick another card`:'Select a card to begin';
+    el.className='status-pill hint';
+  },dur);
+}
+
+// ── Splash ────────────────────────────────────────────────────────────────────
+function showSplash(emoji,name) {
+  const el=document.createElement('div'); el.className='disc-splash';
+  el.innerHTML=`<span class="splash-emoji">${emoji}</span>
+    <span class="splash-label">Discovered!</span>
+    <span class="splash-name">${name}</span>`;
+  document.body.appendChild(el);
+  parseEmojis(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────────
+function spawnParticles(el) {
+  if (!el) return;
+  const r=el.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+  const pal=['#FFD700','#FFB300','#FFA500','#FFF176','#FFECB3'];
+  for (let i=0;i<10;i++) {
+    const angle=(i/10)*Math.PI*2+(Math.random()-.5)*.6;
+    const dist=45+Math.random()*45, sz=4+Math.random()*7;
+    const p=document.createElement('div');
+    p.style.cssText=['position:fixed',`left:${(cx-sz/2).toFixed(1)}px`,`top:${(cy-sz/2).toFixed(1)}px`,
+      `width:${sz.toFixed(1)}px`,`height:${sz.toFixed(1)}px`,
+      `border-radius:${Math.random()>.45?'50%':'2px'}`,
+      `background:${pal[Math.floor(Math.random()*pal.length)]}`,
+      'pointer-events:none','z-index:250',
+      `--dx:${(Math.cos(angle)*dist).toFixed(1)}px`,`--dy:${(Math.sin(angle)*dist).toFixed(1)}px`,
+      `animation:particleOut ${(.45+Math.random()*.3).toFixed(2)}s ease-out forwards`,
+    ].join(';');
+    document.body.appendChild(p);
+    p.addEventListener('animationend',()=>p.remove());
+  }
+}
+
+// ── Win ───────────────────────────────────────────────────────────────────────
+function showWin() {
+  G.won=true;
+  const winItem=G.items.find(i=>i.isWin);
+  document.getElementById('winIcon').textContent = winItem?.emoji??'🏆';
+  document.getElementById('winSub').textContent  = `You completed "${G.puzzle.title}"`;
+  document.getElementById('winTime').textContent = `⏱ ${fmtTime(T.elapsed)}`;
+  document.getElementById('wDisc').textContent   = G.discoveries;
+  document.getElementById('wAtt').textContent    = G.attempts;
+  const cr=document.getElementById('challengeResult');
+  if (G.challengeTarget>0) {
+    if (T.elapsed<=G.challengeTarget) { cr.textContent=`🏆 Beaten! You were ${fmtTime(G.challengeTarget-T.elapsed)} faster!`; cr.className='challenge-result beaten'; }
+    else                               { cr.textContent=`⚡ ${fmtTime(T.elapsed-G.challengeTarget)} slower. Try again!`;      cr.className='challenge-result failed'; }
+  } else cr.className='challenge-result';
+  document.getElementById('winOverlay').classList.add('open');
+  parseEmojis(document.querySelector('.win-modal'));
+  spawnConfetti();
+}
+function restart() {
+  document.getElementById('winOverlay').classList.remove('open');
+  setTimeout(() => loadPuzzleByKey(G.puzzleKey), 320);
+}
+
+// ── Share ─────────────────────────────────────────────────────────────────────
+function shareChallenge() {
+  const url=new URL(window.location.href);
+  url.searchParams.set('puzzle',G.puzzleKey);
+  url.searchParams.set('challenge',Math.floor(T.elapsed/1000));
+  navigator.clipboard.writeText(url.toString())
+    .then(()=>{ const el=document.getElementById('shareConfirm'); el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2400); })
+    .catch(()=>prompt('Copy this challenge link:',url.toString()));
+}
+
+// ── Confetti ──────────────────────────────────────────────────────────────────
+function spawnConfetti() {
+  const pal=['#FFD700','#FF6B6B','#6BCB77','#4D96FF','#C77DFF','#FF9F1C'];
+  for (let i=0;i<65;i++) {
+    const p=document.createElement('div'), sz=Math.random()*10+5;
+    p.style.cssText=['position:fixed','z-index:200','pointer-events:none','top:-14px',
+      `left:${(Math.random()*100).toFixed(1)}%`,`width:${sz.toFixed(1)}px`,`height:${sz.toFixed(1)}px`,
+      `background:${pal[Math.floor(Math.random()*pal.length)]}`,
+      `border-radius:${Math.random()>.45?'50%':'3px'}`,
+      `transform:rotate(${Math.floor(Math.random()*360)}deg)`,
+      `animation:confettiFall ${(Math.random()*2+1.6).toFixed(2)}s ease-in ${(Math.random()*.7).toFixed(2)}s forwards`,
+    ].join(';');
+    document.body.appendChild(p);
+    p.addEventListener('animationend',()=>p.remove());
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

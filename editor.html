@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alchemix — Puzzle Editor</title>
+<style>
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #f5f0e8;
+  --surface: #ffffff;
+  --border:  #d8cfc4;
+  --text:    #1c1c1e;
+  --muted:   #8e8e93;
+  --accent:  #c9a227;
+  --danger:  #dc2626;
+  --success: #16a34a;
+  --radius:  10px;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+header h1 { font-size: 1.3rem; font-weight: 800; }
+header p  { font-size: .8rem; color: var(--muted); flex: 1; }
+header a  { font-size: .8rem; color: var(--accent); text-decoration: none; font-weight: 600; white-space: nowrap; }
+header a:hover { text-decoration: underline; }
+
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Section cards ──────────────────────────────────────────────────────── */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.section-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-head h2 { font-size: 1rem; font-weight: 700; }
+.section-head .badge {
+  background: rgba(0,0,0,.07);
+  color: var(--muted);
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.section-body { padding: 18px 20px; }
+
+/* ── Form elements ──────────────────────────────────────────────────────── */
+label {
+  display: block;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+input[type="text"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .9rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color .15s;
+  outline: none;
+}
+input[type="text"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus { border-color: var(--accent); }
+
+textarea {
+  resize: vertical;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: .8rem;
+  line-height: 1.6;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-color: #313244;
+}
+
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+@media (max-width: 500px) {
+  .row-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius);
+  font-size: .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: background .15s, transform .1s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:hover  { background: #b8911e; }
+.btn-outline  { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+.btn-outline:hover  { background: rgba(0,0,0,.04); }
+.btn-danger   { background: #fee2e2; color: var(--danger); }
+.btn-danger:hover   { background: #fecaca; }
+.btn-success  { background: #dcfce7; color: var(--success); }
+.btn-success:hover  { background: #bbf7d0; }
+.btn-sm { padding: 5px 12px; font-size: .75rem; }
+
+/* ── Add-item form ──────────────────────────────────────────────────────── */
+.add-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.add-form .field { flex: 1; min-width: 80px; }
+.add-form .field-emoji { max-width: 90px; }
+.add-form .field-emoji input { text-align: center; font-size: 1.3rem; }
+
+/* ── Item list ──────────────────────────────────────────────────────────── */
+.item-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 6px 8px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  font-size: .82rem;
+  font-weight: 600;
+}
+.item-chip .chip-emoji { font-size: 1.1rem; line-height: 1; }
+.item-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .9rem;
+  padding: 0 0 0 2px;
+  line-height: 1;
+  transition: color .15s;
+}
+.item-chip button:hover { color: var(--danger); }
+.empty-hint {
+  font-size: .8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Recipe list ────────────────────────────────────────────────────────── */
+.recipe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .85rem;
+  flex-wrap: wrap;
+}
+.recipe-row .plus, .recipe-row .eq { color: var(--muted); font-weight: 700; flex-shrink: 0; }
+.recipe-ingredient, .recipe-result {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+.recipe-row .remove-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .9rem;
+  transition: color .15s;
+  flex-shrink: 0;
+}
+.recipe-row .remove-btn:hover { color: var(--danger); }
+
+/* ── Recipe add form ────────────────────────────────────────────────────── */
+.recipe-add-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* Ingredients row */
+.recipe-ing-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.recipe-ing-row > div.field { flex: 1; min-width: 120px; }
+.recipe-ing-row .sep {
+  font-size: 1.2rem; color: var(--muted); font-weight: 700;
+  padding-bottom: 10px; flex-shrink: 0;
+}
+
+/* Results section */
+.recipe-outputs-section {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+}
+.recipe-outputs-label {
+  font-size: .72rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.recipe-outputs-label small {
+  text-transform: none; font-weight: 400; letter-spacing: 0;
+  color: var(--muted); font-size: .72rem;
+}
+
+.result-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+.result-row .field-emoji { width: 80px; flex-shrink: 0; }
+.result-row .field-emoji input { text-align: center; font-size: 1.2rem; }
+.result-row .field-name { flex: 1; }
+.result-badge {
+  font-size: .65rem; font-weight: 700; border-radius: 4px;
+  padding: 2px 7px; white-space: nowrap; flex-shrink: 0;
+  align-self: center; margin-bottom: 1px;
+  border: none; cursor: pointer; font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.result-badge:hover { opacity: .8; }
+.result-badge.primary { color: var(--success); background: #dcfce7; }
+.result-badge.bonus   { color: var(--muted);   background: rgba(0,0,0,.07); }
+.result-row .remove-row {
+  align-self: flex-end; padding-bottom: 2px;
+}
+
+.recipe-form-actions {
+  display: flex; gap: 8px; align-items: center;
+  margin-top: 10px;
+}
+
+/* ── Win condition ──────────────────────────────────────────────────────── */
+.win-selector { display: flex; align-items: center; gap: 12px; }
+.win-preview  { font-size: 2rem; min-width: 36px; text-align: center; }
+
+/* ── Code output ────────────────────────────────────────────────────────── */
+.code-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.copy-feedback {
+  font-size: .8rem;
+  color: var(--success);
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .3s;
+}
+.copy-feedback.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚗️ Alchemix — Puzzle Editor</h1>
+  <p>Build a puzzle, then copy the generated code into <code>puzzles.js</code></p>
+  <a href="index.html">← Back to game</a>
+</header>
+
+<div class="page">
+
+  <!-- ── Puzzle Info ─────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head"><h2>📋 Puzzle Info</h2></div>
+    <div class="section-body">
+      <div class="row-2">
+        <div>
+          <label for="eTitle">Puzzle Title</label>
+          <input id="eTitle" type="text" placeholder="The Dragon's Treasure" oninput="update()">
+        </div>
+        <div>
+          <label for="eDate">Date (for daily schedule)</label>
+          <input id="eDate" type="date" oninput="update()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Starting Items ─────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>🃏 Starting Items</h2>
+      <span class="badge" id="startCount">0</span>
+    </div>
+    <div class="section-body">
+      <div class="item-list" id="startList">
+        <span class="empty-hint">No starting items yet — add some below.</span>
+      </div>
+
+      <div class="add-form">
+        <div class="field field-emoji">
+          <label>Emoji</label>
+          <input id="siEmoji" type="text" placeholder="🔤">
+        </div>
+        <div class="field" style="flex:2">
+          <label>Name</label>
+          <input id="siName" type="text" placeholder="e.g. Fire" onkeydown="if(event.key==='Enter')addStartItem()">
+        </div>
+        <button class="btn btn-primary" onclick="addStartItem()">+ Add Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Recipes ────────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head">
+      <h2>⚗️ Recipes</h2>
+      <span class="badge" id="recipeCount">0</span>
+    </div>
+    <div class="section-body">
+
+      <div class="recipe-list" id="recipeList">
+        <span class="empty-hint">No recipes yet — add starting items first, then define combinations.</span>
+      </div>
+
+      <!-- Recipe add form -->
+      <div class="recipe-add-form" id="recipeForm" style="display:none">
+
+        <!-- Ingredients -->
+        <div class="recipe-ing-row">
+          <div class="field">
+            <label>Ingredient 1</label>
+            <select id="rA"></select>
+          </div>
+          <div class="sep">+</div>
+          <div class="field">
+            <label>Ingredient 2</label>
+            <select id="rB"></select>
+          </div>
+        </div>
+
+        <!-- Outputs -->
+        <div class="recipe-outputs-section">
+          <div class="recipe-outputs-label">
+            Outputs
+            <small>— click <b>★ Panel</b> / <b>◦ Board</b> to choose what appears in the discoveries panel</small>
+          </div>
+          <div id="resultRows"></div>
+          <button class="btn btn-outline btn-sm" id="addOutputBtn" onclick="addResultRow()">
+            + Add another output
+          </button>
+        </div>
+
+        <div class="recipe-form-actions">
+          <button class="btn btn-primary" onclick="addRecipe()">+ Add Recipe</button>
+        </div>
+
+      </div>
+
+      <p id="noItemsHint" style="font-size:.8rem;color:var(--muted);margin-top:12px;display:none">
+        Add at least two starting items to define recipes.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Win Condition ──────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head"><h2>🏆 Win Condition</h2></div>
+    <div class="section-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+        The player wins when they discover this item. Usually the last recipe's result.
+      </p>
+      <div class="win-selector">
+        <span class="win-preview" id="winPreview">—</span>
+        <div style="flex:1;max-width:260px">
+          <label>Win Item</label>
+          <select id="winSelect" onchange="S.winItem=this.value;renderWinPreview();update()"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Generated Code ─────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-head"><h2>📄 Generated Code</h2></div>
+    <div class="section-body">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:12px">
+        Copy this block and paste it inside the <code>PUZZLES</code> object in <code>puzzles.js</code>,
+        above the closing <code>};</code> line.
+      </p>
+      <textarea id="codeOut" rows="22" readonly spellcheck="false"></textarea>
+      <div class="code-actions">
+        <button class="btn btn-success" onclick="copyCode()">📋 Copy to Clipboard</button>
+        <span class="copy-feedback" id="copyFeedback">✓ Copied!</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .page -->
+
+<script>
+// ── Editor State ──────────────────────────────────────────────────────────────
+const S = {
+  title:         '',
+  date:          localDateStr(),
+  startingItems: [],   // { id, emoji, name }
+  recipes:       [],   // { a, b, results: [{ id, emoji, name }, ...] }
+  winItem:       '',
+};
+
+let resultRowsReady = false;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function localDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function makeId(name) {
+  const base = name.toLowerCase().trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+  return base || 'item_' + Date.now();
+}
+
+// All items currently known (starting + all recipe outputs)
+function allItems() {
+  return [
+    ...S.startingItems,
+    ...S.recipes.flatMap(r => r.results),
+  ];
+}
+
+function itemById(id) {
+  return allItems().find(i => i.id === id);
+}
+
+function ensureUniqueId(id) {
+  const existing = new Set(allItems().map(i => i.id));
+  if (!existing.has(id)) return id;
+  let n = 2;
+  while (existing.has(`${id}_${n}`)) n++;
+  return `${id}_${n}`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  document.getElementById('eDate').value = S.date;
+  update();
+}
+
+// ── Starting items ────────────────────────────────────────────────────────────
+function addStartItem() {
+  const emoji = document.getElementById('siEmoji').value.trim() || '❓';
+  const name  = document.getElementById('siName').value.trim();
+  if (!name) { document.getElementById('siName').focus(); return; }
+
+  const id = ensureUniqueId(makeId(name));
+  S.startingItems.push({ id, emoji, name });
+
+  document.getElementById('siEmoji').value = '';
+  document.getElementById('siName').value  = '';
+  document.getElementById('siEmoji').focus();
+  update();
+}
+
+function removeStartItem(id) {
+  S.recipes = S.recipes.filter(r =>
+    r.a !== id && r.b !== id && !r.results.some(res => res.id === id)
+  );
+  S.startingItems = S.startingItems.filter(i => i.id !== id);
+  if (S.winItem === id) S.winItem = '';
+  update();
+}
+
+// ── Result rows (output fields in the add-recipe form) ────────────────────────
+function addResultRow() {
+  const container = document.getElementById('resultRows');
+  const idx = container.querySelectorAll('.result-row').length;
+  if (idx >= 5) return;
+
+  const isPrimary = idx === 0;
+  const row = document.createElement('div');
+  row.className = 'result-row';
+
+  row.innerHTML = `
+    <div class="field field-emoji">
+      ${idx === 0 ? '<label>Emoji</label>' : '<label>&nbsp;</label>'}
+      <input class="rResEmoji" type="text" placeholder="✨">
+    </div>
+    <div class="field field-name">
+      ${idx === 0 ? '<label>Name</label>' : '<label>&nbsp;</label>'}
+      <input class="rResName" type="text" placeholder="${isPrimary ? 'e.g. Iron Bar' : 'e.g. Bonus Item'}"
+        onkeydown="if(event.key==='Enter')addRecipe()">
+    </div>
+    <button class="result-badge ${isPrimary ? 'primary' : 'bonus'}" onclick="togglePanel(this)" type="button" title="Click to toggle discoveries panel / board only">
+      ${isPrimary ? '★ Panel' : '◦ Board'}
+    </button>
+    ${!isPrimary ? `<button class="btn btn-danger btn-sm remove-row" onclick="removeResultRow(this)" type="button">✕</button>` : ''}
+  `;
+
+  container.appendChild(row);
+
+  // Hide "Add another output" button when at max
+  document.getElementById('addOutputBtn').style.display =
+    container.querySelectorAll('.result-row').length >= 5 ? 'none' : 'inline-flex';
+}
+
+function removeResultRow(btn) {
+  btn.closest('.result-row').remove();
+  const container = document.getElementById('resultRows');
+  document.getElementById('addOutputBtn').style.display =
+    container.querySelectorAll('.result-row').length >= 5 ? 'none' : 'inline-flex';
+}
+
+function togglePanel(btn) {
+  const isPanel = btn.classList.contains('primary');
+  btn.classList.toggle('primary', !isPanel);
+  btn.classList.toggle('bonus',  isPanel);
+  btn.textContent = isPanel ? '◦ Board' : '★ Panel';
+}
+
+function resetResultRows() {
+  document.getElementById('resultRows').innerHTML = '';
+  document.getElementById('addOutputBtn').style.display = 'inline-flex';
+  addResultRow(); // start fresh with one primary row
+}
+
+// ── Recipes ───────────────────────────────────────────────────────────────────
+function addRecipe() {
+  const a = document.getElementById('rA').value;
+  const b = document.getElementById('rB').value;
+  if (!a || !b) { alert('Select both ingredients.'); return; }
+
+  // Collect non-empty result rows
+  const rows = Array.from(document.querySelectorAll('#resultRows .result-row'));
+  const results = [];
+  for (let i = 0; i < rows.length; i++) {
+    const emoji = rows[i].querySelector('.rResEmoji').value.trim() || '✨';
+    const name  = rows[i].querySelector('.rResName').value.trim();
+    if (i === 0 && !name) { rows[i].querySelector('.rResName').focus(); return; }
+    if (!name) continue; // skip empty bonus rows
+    const id    = ensureUniqueId(makeId(name));
+    const panel = rows[i].querySelector('.result-badge').classList.contains('primary');
+    results.push({ id, emoji, name, panel });
+  }
+  if (results.length === 0) { rows[0]?.querySelector('.rResName').focus(); return; }
+
+  // Duplicate check
+  const dup = S.recipes.find(r => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+  if (dup) {
+    alert(`A recipe for ${itemById(a)?.name} + ${itemById(b)?.name} already exists.`);
+    return;
+  }
+
+  S.recipes.push({ a, b, results });
+  S.winItem = results[0].id; // auto-advance win item to latest primary result
+
+  resetResultRows();
+  update();
+}
+
+function removeRecipe(idx) {
+  const removed = S.recipes.splice(idx, 1)[0];
+  const removedIds = new Set(removed.results.map(r => r.id));
+  if (removedIds.has(S.winItem)) {
+    S.winItem = S.recipes.length > 0 ? S.recipes[S.recipes.length - 1].results[0].id : '';
+  }
+  // Remove downstream recipes that depended on any of these results as ingredients
+  S.recipes = S.recipes.filter(r => !removedIds.has(r.a) && !removedIds.has(r.b));
+  update();
+}
+
+// ── Render all UI ─────────────────────────────────────────────────────────────
+function update() {
+  S.title = document.getElementById('eTitle').value.trim() || 'My Puzzle';
+  S.date  = document.getElementById('eDate').value || localDateStr();
+
+  renderStartList();
+  renderRecipeList();
+  renderDropdowns();
+  renderWinSelect();
+  renderWinPreview();
+  renderCode();
+}
+
+function renderStartList() {
+  const el = document.getElementById('startList');
+  document.getElementById('startCount').textContent = S.startingItems.length;
+  if (S.startingItems.length === 0) {
+    el.innerHTML = '<span class="empty-hint">No starting items yet — add some below.</span>';
+    return;
+  }
+  el.innerHTML = S.startingItems.map(item => `
+    <div class="item-chip">
+      <span class="chip-emoji">${item.emoji}</span>
+      <span>${item.name}</span>
+      <button onclick="removeStartItem('${item.id}')" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderRecipeList() {
+  const el = document.getElementById('recipeList');
+  document.getElementById('recipeCount').textContent = S.recipes.length;
+  if (S.recipes.length === 0) {
+    el.innerHTML = '<span class="empty-hint">No recipes yet.</span>';
+    return;
+  }
+  el.innerHTML = S.recipes.map((r, i) => {
+    const itemA = itemById(r.a);
+    const itemB = itemById(r.b);
+    const multiResult = r.results.length > 1;
+    const resultDisplay = r.results.map((res, ri) => {
+      const badge = multiResult
+        ? `<span class="result-badge ${res.panel ? 'primary' : 'bonus'}" style="cursor:default">${res.panel ? '★' : '◦'}</span>`
+        : '';
+      return `
+        ${ri > 0 ? '<span class="plus">+</span>' : ''}
+        <div class="recipe-result">${badge}<b>${res.emoji}</b> ${res.name}</div>
+      `;
+    }).join('');
+    return `
+      <div class="recipe-row">
+        <div class="recipe-ingredient">${itemA?.emoji ?? '?'} ${itemA?.name ?? r.a}</div>
+        <span class="plus">+</span>
+        <div class="recipe-ingredient">${itemB?.emoji ?? '?'} ${itemB?.name ?? r.b}</div>
+        <span class="eq">=</span>
+        ${resultDisplay}
+        <button class="remove-btn" onclick="removeRecipe(${i})" title="Remove recipe">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDropdowns() {
+  const items = allItems();
+  const hasEnough = items.length >= 2;
+
+  const formEl = document.getElementById('recipeForm');
+  formEl.style.display = hasEnough ? 'block' : 'none';
+  document.getElementById('noItemsHint').style.display = hasEnough ? 'none' : 'block';
+
+  if (!hasEnough) return;
+
+  // Initialise the result rows the first time the form becomes visible
+  if (!resultRowsReady) {
+    addResultRow();
+    resultRowsReady = true;
+  }
+
+  ['rA', 'rB'].forEach(id => {
+    const sel  = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = items.map(i =>
+      `<option value="${i.id}">${i.emoji} ${i.name}</option>`
+    ).join('');
+    if (items.some(i => i.id === prev)) sel.value = prev;
+  });
+
+  // Default rB to second item so they're not the same
+  if (document.getElementById('rA').value === document.getElementById('rB').value) {
+    const opts = document.getElementById('rB').options;
+    if (opts.length > 1) opts[1].selected = true;
+  }
+}
+
+function renderWinSelect() {
+  const results = S.recipes.flatMap(r => r.results);
+  const sel = document.getElementById('winSelect');
+  if (results.length === 0) {
+    sel.innerHTML = '<option value="">— add recipes first —</option>';
+    return;
+  }
+  sel.innerHTML = results.map(r =>
+    `<option value="${r.id}" ${r.id === S.winItem ? 'selected' : ''}>${r.emoji} ${r.name}</option>`
+  ).join('');
+  if (!S.winItem || !results.find(r => r.id === S.winItem)) {
+    S.winItem = results[results.length - 1].id;
+    sel.value = S.winItem;
+  }
+}
+
+function renderWinPreview() {
+  const item = itemById(S.winItem);
+  document.getElementById('winPreview').textContent = item ? item.emoji : '—';
+}
+
+// ── Code generation ───────────────────────────────────────────────────────────
+function renderCode() {
+  document.getElementById('codeOut').value = genCode();
+}
+
+function genCode() {
+  const q = JSON.stringify;
+
+  if (S.startingItems.length === 0) {
+    return '// Add starting items above to generate code.';
+  }
+
+  const startLines = S.startingItems
+    .map(i => `    { id: ${q(i.id)}, emoji: ${q(i.emoji)}, name: ${q(i.name)} }`)
+    .join(',\n');
+
+  const recipeLines = S.recipes.map(r => {
+    if (r.results.length === 1) {
+      // Single output — compact format
+      const res = r.results[0];
+      return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)} } }`;
+    } else {
+      // Multiple outputs — array format; panel:true marks which appear in discoveries
+      const resItems = r.results.map(res => {
+        const panelPart = res.panel ? ', panel: true' : '';
+        return `        { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)}${panelPart} }`;
+      }).join(',\n');
+      return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: [\n${resItems},\n    ] }`;
+    }
+  }).join(',\n');
+
+  const winItem = S.winItem ||
+    (S.recipes.length > 0 ? S.recipes[S.recipes.length - 1].results[0].id : '');
+
+  return [
+    `${q(S.date)}: {`,
+    `  title: ${q(S.title)},`,
+    `  startingItems: [`,
+    startLines,
+    `  ],`,
+    `  recipes: [`,
+    recipeLines || '    // no recipes defined',
+    `  ],`,
+    `  winItem: ${q(winItem)},`,
+    `},`,
+  ].join('\n');
+}
+
+// ── Copy to clipboard ─────────────────────────────────────────────────────────
+function copyCode() {
+  const code = document.getElementById('codeOut').value;
+  navigator.clipboard.writeText(code).then(() => {
+    const fb = document.getElementById('copyFeedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2000);
+  }).catch(() => {
+    document.getElementById('codeOut').select();
+    document.execCommand('copy');
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
