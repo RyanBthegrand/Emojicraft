@@ -48,7 +48,7 @@ const PUZZLES = {
 
 
 
-  "2026-05-28": {
+  "2026-05-29": {
   title: "People",
   startingItems: [
     { id: "b", emoji: "👩‍🦳", name: "B" },
