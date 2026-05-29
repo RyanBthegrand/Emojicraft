@@ -149,4 +149,79 @@ const PUZZLES = {
 
   // ── Paste new puzzles below this line ──────────────────────────────────────
 
+  "2026-05-31": {
+    title: "The Artist's Palette",
+    startingItems: [
+      { id: "col_red",    emoji: "🔴", name: "Red"    },
+      { id: "col_blue",   emoji: "🔵", name: "Blue"   },
+      { id: "col_yellow", emoji: "🟡", name: "Yellow" },
+      { id: "col_brush",  emoji: "🖌️",  name: "Brush"  },
+    ],
+    recipes: [
+      { ingredients: ["col_red",     "col_yellow"],  result: { id: "col_orange",      emoji: "🟠", name: "Orange"      } },
+      { ingredients: ["col_blue",    "col_yellow"],  result: { id: "col_green",        emoji: "🟢", name: "Green"       } },
+      { ingredients: ["col_red",     "col_blue"  ],  result: { id: "col_purple",       emoji: "🟣", name: "Purple"      } },
+      { ingredients: ["col_green",   "col_purple"],  result: { id: "col_rainbow",      emoji: "🌈", name: "Rainbow"     } },
+      { ingredients: ["col_rainbow", "col_brush" ],  result: { id: "col_masterpiece",  emoji: "🎨", name: "Masterpiece" } },
+    ],
+    winItem: "col_masterpiece",
+  },
+
+  "2026-06-01": {
+    title: "Jack's Beanstalk",
+    startingItems: [
+      { id: "jb_beans", emoji: "🫘", name: "Magic Beans" },
+      { id: "jb_rain",  emoji: "🌧️",  name: "Rain"        },
+      { id: "jb_cloud", emoji: "☁️",  name: "Cloud"       },
+      { id: "jb_axe",   emoji: "🪓", name: "Axe"         },
+    ],
+    recipes: [
+      // Plant the beans
+      { ingredients: ["jb_beans",  "jb_rain"  ], result: [
+          { id: "jb_sprout", emoji: "🌱", name: "Sprout",          panel: true },
+          { id: "jb_ground", emoji: "🌍", name: "Fertile Ground"               },
+      ]},
+      // Beanstalk grows to the clouds — castle appears
+      { ingredients: ["jb_sprout", "jb_cloud" ], result: [
+          { id: "jb_stalk",  emoji: "🌳", name: "Giant Beanstalk", panel: true },
+          { id: "jb_castle", emoji: "🏰", name: "Sky Castle",       panel: true },
+      ]},
+      // Climb up and find the treasure — but wake the giant
+      { ingredients: ["jb_stalk",  "jb_castle"], result: [
+          { id: "jb_egg",   emoji: "🥚", name: "Golden Egg",       panel: true },
+          { id: "jb_giant", emoji: "👹", name: "Giant"                         },
+      ]},
+      // Escape! Chop the beanstalk with the golden egg in hand
+      { ingredients: ["jb_egg", "jb_axe"], result: { id: "jb_victory", emoji: "🏆", name: "Jack Victorious" } },
+    ],
+    winItem: "jb_victory",
+  },
+
+  "2026-06-02": {
+    title: "King of Monsters",
+    startingItems: [
+      { id: "gz_bomb",   emoji: "💣", name: "Nuclear Bomb" },
+      { id: "gz_ocean",  emoji: "🌊", name: "Ocean"        },
+      { id: "gz_lizard", emoji: "🦎", name: "Lizard"       },
+      { id: "gz_city",   emoji: "🏙️",  name: "City"         },
+    ],
+    recipes: [
+      // Nuclear test irradiates the ocean
+      { ingredients: ["gz_bomb",     "gz_ocean"    ], result: [
+          { id: "gz_rad_sea",  emoji: "☢️", name: "Radioactive Sea", panel: true },
+          { id: "gz_fallout",  emoji: "☣️", name: "Fallout"                       },
+      ]},
+      // Ancient lizard mutates in the radioactive ocean
+      { ingredients: ["gz_lizard",   "gz_rad_sea"  ], result: { id: "gz_godzilla", emoji: "🦖", name: "Godzilla"        } },
+      // Godzilla attacks the city — military mobilises
+      { ingredients: ["gz_godzilla", "gz_city"     ], result: [
+          { id: "gz_flames",   emoji: "💥", name: "City in Flames",  panel: true },
+          { id: "gz_military", emoji: "🪖", name: "Military",         panel: true },
+      ]},
+      // Godzilla defeats the military — reigns supreme
+      { ingredients: ["gz_godzilla", "gz_military" ], result: { id: "gz_king", emoji: "👑", name: "King of Monsters" } },
+    ],
+    winItem: "gz_king",
+  },
+
 };
