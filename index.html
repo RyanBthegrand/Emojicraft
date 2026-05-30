@@ -574,7 +574,7 @@ footer a:hover { text-decoration: underline; }
 </footer>
 
 <!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
-<script src="puzzles.js?v=20260530a"></script>
+<script src="puzzles.js?v=20260530c"></script>
 <script>
 // ── Theme system ──────────────────────────────────────────────────────────────
 const THEMES = {
@@ -684,6 +684,13 @@ function emojiFilter(item) {
   return `hue-rotate(${hue}deg) saturate(${sat}%)`;
 }
 
+// Escape text before inserting it into innerHTML — defends against any HTML/script
+// sneaking in through puzzle titles, item names, or emoji fields.
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
 function parseEmojis(el) {
   if (typeof twemoji === 'undefined' || !el) return;
   // GitHub asset path has full emoji coverage (the npm /dist mirror 404s on newer codepoints)
@@ -691,11 +698,32 @@ function parseEmojis(el) {
     base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
 }
 
+// ── Helpers: which puzzles are playable / visible ──────────────────────────────
+const isDateKey   = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
+// A future-dated puzzle (after today, AU time) is hidden until its day arrives.
+const isFutureKey = k => isDateKey(k) && k > localDate();
+const puzzlePlayable = k =>
+  PUZZLES[k] && PUZZLES[k].startingItems?.length > 0 && !isFutureKey(k);
+
+// Pick the puzzle to show by default: today's, else the most recent released one.
+function pickDailyKey() {
+  const today = localDate();
+  if (puzzlePlayable(today)) return today;
+  const dated = Object.keys(PUZZLES)
+    .filter(k => isDateKey(k) && PUZZLES[k]?.startingItems?.length > 0)
+    .sort();
+  const past = dated.filter(k => k <= today);
+  if (past.length) return past[past.length - 1];               // most recent released
+  if (PUZZLES['default']?.startingItems?.length > 0) return 'default';
+  if (dated.length) return dated[0];                            // clock set in the past → earliest
+  return 'default';
+}
+
 // ── Archive ───────────────────────────────────────────────────────────────────
 function getArchivePuzzles() {
-  // Filter out empty puzzle slots (e.g. a placeholder "default" with no startingItems)
+  // Only show non-empty, non-future dated puzzles (newest first), then the featured default.
   const dated = Object.entries(PUZZLES)
-    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0)
+    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0 && !isFutureKey(k))
     .sort(([a],[b]) => b.localeCompare(a));
   const def = PUZZLES['default'];
   if (def?.startingItems?.length > 0) dated.push(['default', def]);
@@ -741,10 +769,10 @@ function renderArchive() {
     const emoji = dItem?.emoji ?? '⚗️';
     const df = dItem ? emojiFilter(dItem) : '';
     btn.innerHTML = `
-      <span class="arc-drop-emoji"${df?` style="filter:${df}"`:''}>${emoji}</span>
+      <span class="arc-drop-emoji"${df?` style="filter:${df}"`:''}>${escapeHtml(emoji)}</span>
       <span class="arc-drop-info">
-        <div class="arc-drop-name">${puz.title}</div>
-        <div class="arc-drop-date">${archiveDate(key)}</div>
+        <div class="arc-drop-name">${escapeHtml(puz.title)}</div>
+        <div class="arc-drop-date">${escapeHtml(archiveDate(key))}</div>
       </span>
       ${isActive ? '<span class="arc-drop-dot"></span>' : ''}`;
     btn.addEventListener('click', () => { loadPuzzleByKey(key); closeArchiveDropdown(); });
@@ -754,7 +782,7 @@ function renderArchive() {
 }
 
 function loadPuzzleByKey(key) {
-  if (!PUZZLES[key]) return;
+  if (!puzzlePlayable(key)) return;  // ignore missing, empty, or not-yet-released puzzles
   G.puzzleKey = key;
   G.puzzle = PUZZLES[key];
   G.items = G.puzzle.startingItems.map(i=>({...i,disc:0,isWin:false,entering:false}));
@@ -779,9 +807,9 @@ function init() {
   initTheme();
   const params   = new URLSearchParams(window.location.search);
   const pParam   = params.get('puzzle');
-  const cParam   = parseInt(params.get('challenge') || '0');
-  const today    = localDate();
-  G.puzzleKey    = pParam && PUZZLES[pParam] ? pParam : (PUZZLES[today] ? today : 'default');
+  const cParam   = parseInt(params.get('challenge') || '0', 10) || 0;
+  // Use the requested puzzle only if it's actually playable (exists, non-empty, not future)
+  G.puzzleKey    = (pParam && puzzlePlayable(pParam)) ? pParam : pickDailyKey();
   G.puzzle       = PUZZLES[G.puzzleKey];
   G.items        = G.puzzle.startingItems.map(i=>({...i,disc:0,isWin:false,entering:false}));
   G.selected=null; G.attempts=0; G.discoveries=0; G.lastRevealedIds=new Set(); G.won=false;
@@ -864,8 +892,8 @@ function buildCard(item) {
   if (item.disc>0 && !item.isWin) el.dataset.disc = Math.min(item.disc,5);
   el.setAttribute('role','button'); el.setAttribute('tabindex','0'); el.setAttribute('aria-label',item.name);
   const f = emojiFilter(item);
-  el.innerHTML = `<div class="card-emoji"${f?` style="filter:${f}"`:''}>${item.emoji}</div>
-    <div class="card-bottom"><span class="card-label">${item.name}</span></div>`;
+  el.innerHTML = `<div class="card-emoji"${f?` style="filter:${f}"`:''}>${escapeHtml(item.emoji)}</div>
+    <div class="card-bottom"><span class="card-label">${escapeHtml(item.name)}</span></div>`;
   el.addEventListener('pointerdown', e => onCardPointerDown(e, item.id));
   el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(item.id);} });
   return el;
@@ -1042,10 +1070,10 @@ function showDiscoveryToast(item, isDiscovery = true) {
   el.className = 'discovery-toast' + (isDiscovery ? '' : ' find');
   el.style.bottom = (BASE + stack * (TOAST_H + 8)) + 'px';
   const f = emojiFilter(item);
-  el.innerHTML = `<span class="toast-emoji"${f?` style="filter:${f}"`:''}>${item.emoji}</span>
+  el.innerHTML = `<span class="toast-emoji"${f?` style="filter:${f}"`:''}>${escapeHtml(item.emoji)}</span>
     <div class="toast-body">
       <div class="toast-cap">${isDiscovery ? '✦ Discovery' : '＋ New Find'}</div>
-      <div class="toast-name">${item.name}</div>
+      <div class="toast-name">${escapeHtml(item.name)}</div>
     </div>`;
   document.body.appendChild(el);
   parseEmojis(el);

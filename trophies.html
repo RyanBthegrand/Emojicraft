@@ -165,12 +165,22 @@ footer a { font-size: 1.5rem; text-decoration: none; }
 <footer><a href="index.html" title="Back to game">🎮</a></footer>
 
 <!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
-<script src="puzzles.js?v=20260530a"></script>
+<script src="puzzles.js?v=20260530c"></script>
 <script>
 function parseEmojis(el) {
   if (typeof twemoji === 'undefined' || !el) return;
   twemoji.parse(el, { folder:'svg', ext:'.svg',
     base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+// Today's date in Australian Eastern Time (matches the game's schedule)
+function todayAU() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
 }
 
 function emojiFilter(item) {
@@ -190,14 +200,12 @@ function resolveItem(puzzle, id) {
   return all.find(i => i.id === id);
 }
 
-// Non-empty puzzles only; dated ones newest-first, then the featured default
+// Non-empty, non-future dated puzzles (newest first). Upcoming puzzles stay hidden.
 function getPuzzleList() {
-  const dated = Object.entries(PUZZLES)
-    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0)
+  const today = todayAU();
+  return Object.entries(PUZZLES)
+    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0 && k <= today)
     .sort(([a],[b]) => b.localeCompare(a));
-  const def = PUZZLES['default'];
-  if (def?.startingItems?.length > 0) dated.push(['default', def]);
-  return dated;
 }
 
 function loadCompletions() {
@@ -253,9 +261,9 @@ function render() {
     const filter = done && winItem ? emojiFilter(winItem) : '';
     card.innerHTML = `
       ${done ? '<div class="unlock-badge">✓</div>' : ''}
-      <div class="trophy-emoji"${filter ? ` style="filter:${filter}"` : ''}>${emoji}</div>
-      <div class="trophy-name">${done ? puzzle.title : '???'}</div>
-      <div class="trophy-date">${puzzleDateLabel(key)}</div>
+      <div class="trophy-emoji"${filter ? ` style="filter:${filter}"` : ''}>${escapeHtml(emoji)}</div>
+      <div class="trophy-name">${done ? escapeHtml(puzzle.title) : '???'}</div>
+      <div class="trophy-date">${escapeHtml(puzzleDateLabel(key))}</div>
     `;
 
     const msg = done

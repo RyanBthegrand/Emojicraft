@@ -596,6 +596,12 @@ function makeId(name) {
   return base || 'item_' + Date.now();
 }
 
+// Escape text before inserting into innerHTML (defends against HTML in names/emojis)
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g,
+    c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
 // Inline style attribute that applies an item's hue/sat tweak (or '' if default)
 function emojiStyleAttr(item) {
   const f = emojiFilterStr(item?.hue, item?.sat);
@@ -808,9 +814,9 @@ function renderStartList() {
   }
   el.innerHTML = S.startingItems.map(item => `
     <div class="item-chip">
-      <span class="chip-emoji"${emojiStyleAttr(item)}>${item.emoji}</span>
-      <span>${item.name}</span>
-      <button onclick="removeStartItem('${item.id}')" title="Remove">✕</button>
+      <span class="chip-emoji"${emojiStyleAttr(item)}>${escapeHtml(item.emoji)}</span>
+      <span>${escapeHtml(item.name)}</span>
+      <button onclick="removeStartItem('${escapeHtml(item.id)}')" title="Remove">✕</button>
     </div>
   `).join('');
 }
@@ -827,13 +833,13 @@ function renderRecipeList() {
     const itemB = itemById(r.b);
     const resultDisplay = r.results.map((res, ri) => `
       ${ri > 0 ? '<span class="plus">+</span>' : ''}
-      <div class="recipe-result"><b${emojiStyleAttr(res)}>${res.emoji}</b> ${res.name}</div>
+      <div class="recipe-result"><b${emojiStyleAttr(res)}>${escapeHtml(res.emoji)}</b> ${escapeHtml(res.name)}</div>
     `).join('');
     return `
       <div class="recipe-row">
-        <div class="recipe-ingredient"><span${emojiStyleAttr(itemA)}>${itemA?.emoji ?? '?'}</span> ${itemA?.name ?? r.a}</div>
+        <div class="recipe-ingredient"><span${emojiStyleAttr(itemA)}>${escapeHtml(itemA?.emoji ?? '?')}</span> ${escapeHtml(itemA?.name ?? r.a)}</div>
         <span class="plus">+</span>
-        <div class="recipe-ingredient"><span${emojiStyleAttr(itemB)}>${itemB?.emoji ?? '?'}</span> ${itemB?.name ?? r.b}</div>
+        <div class="recipe-ingredient"><span${emojiStyleAttr(itemB)}>${escapeHtml(itemB?.emoji ?? '?')}</span> ${escapeHtml(itemB?.name ?? r.b)}</div>
         <span class="eq">=</span>
         ${resultDisplay}
         <button class="remove-btn" onclick="removeRecipe(${i})" title="Remove recipe">✕</button>

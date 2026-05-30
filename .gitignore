@@ -8,3 +8,6 @@ Desktop.ini
 # Editor temp files
 *.swp
 *~
+
+# Local dev config (machine-specific paths)
+.claude/
