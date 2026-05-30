@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alchemix — Puzzle Editor</title>
+<title>Emojicraft — Puzzle Editor</title>
+
+<!-- Emoji picker web component (registers <emoji-picker>) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+
 <style>
 *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -160,6 +164,40 @@ textarea {
 .add-form .field-emoji { max-width: 90px; }
 .add-form .field-emoji input { text-align: center; font-size: 1.3rem; }
 
+/* ── Emoji-picker fields & modal ────────────────────────────────────────── */
+/* Inputs that open the picker get a pointer cursor + hover affordance */
+.emoji-input { cursor: pointer; }
+.emoji-input:hover { border-color: var(--accent); background: #fffdf6; }
+
+.emoji-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+.emoji-modal.open { display: flex; }
+.emoji-modal-inner {
+  position: relative;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  background: #fff;
+}
+.emoji-modal-close {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: none; cursor: pointer;
+  background: rgba(0,0,0,.06); color: var(--text);
+  font-size: 1rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.emoji-modal-close:hover { background: rgba(0,0,0,.12); }
+emoji-picker {
+  --background: #fff;
+  --emoji-size: 1.4rem;
+  height: min(420px, 70vh);
+  width: min(360px, 92vw);
+}
+
 /* ── Item list ──────────────────────────────────────────────────────────── */
 .item-list {
   display: flex;
@@ -313,7 +351,7 @@ textarea {
 <body>
 
 <header>
-  <h1>⚗️ Alchemix — Puzzle Editor</h1>
+  <h1>🎮 Emojicraft — Puzzle Editor</h1>
   <p>Build a puzzle, then copy the generated code into <code>puzzles.js</code></p>
   <a href="index.html">← Back to game</a>
 </header>
@@ -351,7 +389,7 @@ textarea {
       <div class="add-form">
         <div class="field field-emoji">
           <label>Emoji</label>
-          <input id="siEmoji" type="text" placeholder="🔤">
+          <input id="siEmoji" class="emoji-input" type="text" placeholder="🔤" title="Click to pick an emoji">
         </div>
         <div class="field" style="flex:2">
           <label>Name</label>
@@ -449,6 +487,14 @@ textarea {
 
 </div><!-- .page -->
 
+<!-- ── Emoji picker modal ─────────────────────────────────────────────────── -->
+<div class="emoji-modal" id="emojiModal" onclick="if(event.target===this)closeEmojiPicker()">
+  <div class="emoji-modal-inner">
+    <button class="emoji-modal-close" onclick="closeEmojiPicker()" title="Close" type="button">✕</button>
+    <emoji-picker class="light"></emoji-picker>
+  </div>
+</div>
+
 <script>
 // ── Editor State ──────────────────────────────────────────────────────────────
 const S = {
@@ -537,7 +583,7 @@ function addResultRow() {
   row.innerHTML = `
     <div class="field field-emoji">
       ${idx === 0 ? '<label>Emoji</label>' : '<label>&nbsp;</label>'}
-      <input class="rResEmoji" type="text" placeholder="✨">
+      <input class="rResEmoji emoji-input" type="text" placeholder="✨" title="Click to pick an emoji">
     </div>
     <div class="field field-name">
       ${idx === 0 ? '<label>Name</label>' : '<label>&nbsp;</label>'}
@@ -780,8 +826,51 @@ function copyCode() {
   });
 }
 
+// ── Emoji picker ──────────────────────────────────────────────────────────────
+let emojiTarget = null;
+
+function openEmojiPicker(input) {
+  emojiTarget = input;
+  document.getElementById('emojiModal').classList.add('open');
+}
+function closeEmojiPicker() {
+  document.getElementById('emojiModal').classList.remove('open');
+  emojiTarget = null;
+}
+
+// Clicking an emoji field opens the picker — but only once the component has loaded.
+// If the CDN failed (e.g. offline), fields stay as normal text inputs you can type into.
+document.addEventListener('click', e => {
+  const field = e.target.closest('#siEmoji, .rResEmoji');
+  if (!field) return;
+  if (!customElements.get('emoji-picker')) return; // picker unavailable → allow typing
+  e.preventDefault();
+  field.blur(); // suppress the on-screen keyboard on mobile
+  openEmojiPicker(field);
+});
+
+// When an emoji is chosen, drop it into the target field and move focus to the name
+document.querySelector('#emojiModal emoji-picker').addEventListener('emoji-click', e => {
+  if (emojiTarget) {
+    emojiTarget.value = e.detail.unicode;
+    const nameField = emojiTarget.id === 'siEmoji'
+      ? document.getElementById('siName')
+      : emojiTarget.closest('.result-row')?.querySelector('.rResName');
+    closeEmojiPicker();
+    nameField?.focus();
+  } else {
+    closeEmojiPicker();
+  }
+});
+
+// Esc closes the picker
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeEmojiPicker();
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 init();
 </script>
+
 </body>
 </html>
