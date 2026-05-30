@@ -257,6 +257,17 @@ emoji-picker {
   font-style: italic;
 }
 
+/* Ingredient dropdown with a filtered emoji preview swatch
+   (a native <select> can't colour-filter its option text, so we show it alongside) */
+.ing-pick { display: flex; align-items: center; gap: 8px; }
+.ing-pick select { flex: 1; min-width: 0; }
+.ing-preview {
+  flex-shrink: 0; width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; line-height: 1;
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px;
+}
+
 /* ── Recipe list ────────────────────────────────────────────────────────── */
 .recipe-list {
   display: flex;
@@ -344,6 +355,22 @@ emoji-picker {
 .result-row .remove-row {
   align-self: flex-end; padding-bottom: 2px;
 }
+
+/* Discovery / New-find toggle per output */
+.disc-toggle {
+  align-self: center; flex-shrink: 0;
+  font-size: .66rem; font-weight: 700;
+  border-radius: 6px; padding: 4px 9px;
+  border: 1.5px solid transparent; cursor: pointer; font-family: inherit;
+  white-space: nowrap; transition: background .15s, color .15s, border-color .15s;
+}
+.disc-toggle.is-disc {
+  color: var(--success); background: #dcfce7; border-color: #bbf7d0;
+}
+.disc-toggle.is-find {
+  color: var(--muted); background: rgba(0,0,0,.05); border-color: var(--border);
+}
+.disc-toggle:hover { filter: brightness(.97); }
 
 .recipe-form-actions {
   display: flex; gap: 8px; align-items: center;
@@ -443,12 +470,18 @@ emoji-picker {
         <div class="recipe-ing-row">
           <div class="field">
             <label>Ingredient 1</label>
-            <select id="rA"></select>
+            <div class="ing-pick">
+              <span class="ing-preview" id="rAPreview"></span>
+              <select id="rA" onchange="updateIngredientPreviews()"></select>
+            </div>
           </div>
           <div class="sep">+</div>
           <div class="field">
             <label>Ingredient 2</label>
-            <select id="rB"></select>
+            <div class="ing-pick">
+              <span class="ing-preview" id="rBPreview"></span>
+              <select id="rB" onchange="updateIngredientPreviews()"></select>
+            </div>
           </div>
         </div>
 
@@ -456,7 +489,7 @@ emoji-picker {
         <div class="recipe-outputs-section">
           <div class="recipe-outputs-label">
             Outputs
-            <small>— the game automatically tracks items on the path to the win condition</small>
+            <small>— ★ Discovery shows in the discoveries panel; ◦ New Find only adds the item to the board</small>
           </div>
           <div id="resultRows"></div>
           <button class="btn btn-outline btn-sm" id="addOutputBtn" onclick="addResultRow()">
@@ -647,6 +680,8 @@ function addResultRow() {
   const row = document.createElement('div');
   row.className = 'result-row';
 
+  // Primary output defaults to a Discovery; extra outputs default to New Find.
+  const discDefault = isPrimary;
   row.innerHTML = `
     <div class="field field-emoji">
       ${idx === 0 ? '<label>Emoji</label>' : '<label>&nbsp;</label>'}
@@ -657,19 +692,45 @@ function addResultRow() {
       <input class="rResName" type="text" placeholder="${isPrimary ? 'e.g. Iron Bar' : 'e.g. Bonus Item'}"
         onkeydown="if(event.key==='Enter')addRecipe()">
     </div>
+    <button class="disc-toggle ${discDefault ? 'is-disc' : 'is-find'}" type="button"
+      data-disc="${discDefault ? '1' : '0'}" onclick="toggleDisc(this)"
+      title="Discovery = shown in the discoveries panel. New Find = board only.">
+      ${discDefault ? '★ Discovery' : '◦ New Find'}
+    </button>
     ${!isPrimary ? `<button class="btn btn-danger btn-sm remove-row" onclick="removeResultRow(this)" type="button">✕</button>` : ''}
   `;
 
   container.appendChild(row);
+  updateDiscToggleVisibility();
 
   // Hide "Add another output" button when at max
   document.getElementById('addOutputBtn').style.display =
     container.querySelectorAll('.result-row').length >= 5 ? 'none' : 'inline-flex';
 }
 
+// Flip a single output between Discovery and New Find
+function toggleDisc(btn) {
+  const isDisc = btn.dataset.disc === '1';
+  btn.dataset.disc = isDisc ? '0' : '1';
+  btn.classList.toggle('is-disc', !isDisc);
+  btn.classList.toggle('is-find', isDisc);
+  btn.textContent = isDisc ? '◦ New Find' : '★ Discovery';
+}
+
+// The toggle is only meaningful when a recipe has 2+ outputs; hide it for a lone output.
+function updateDiscToggleVisibility() {
+  const rows = document.querySelectorAll('#resultRows .result-row');
+  const multi = rows.length > 1;
+  rows.forEach(row => {
+    const t = row.querySelector('.disc-toggle');
+    if (t) t.style.display = multi ? 'inline-block' : 'none';
+  });
+}
+
 function removeResultRow(btn) {
   btn.closest('.result-row').remove();
   const container = document.getElementById('resultRows');
+  updateDiscToggleVisibility();
   document.getElementById('addOutputBtn').style.display =
     container.querySelectorAll('.result-row').length >= 5 ? 'none' : 'inline-flex';
 }
@@ -695,7 +756,8 @@ function addRecipe() {
     if (i === 0 && !name) { rows[i].querySelector('.rResName').focus(); return; }
     if (!name) continue; // skip empty bonus rows
     const id = ensureUniqueId(makeId(name));
-    results.push({ id, name, ...readEmojiField(emojiInput) });
+    const isDisc = rows[i].querySelector('.disc-toggle')?.dataset.disc === '1';
+    results.push({ id, name, ...readEmojiField(emojiInput), disc: isDisc });
   }
   if (results.length === 0) { rows[0]?.querySelector('.rResName').focus(); return; }
 
@@ -810,6 +872,19 @@ function renderDropdowns() {
     const opts = document.getElementById('rB').options;
     if (opts.length > 1) opts[1].selected = true;
   }
+
+  updateIngredientPreviews();
+}
+
+// Show the selected ingredient's emoji (with its hue/sat filter) beside each dropdown
+function updateIngredientPreviews() {
+  [['rA','rAPreview'], ['rB','rBPreview']].forEach(([selId, prevId]) => {
+    const item = itemById(document.getElementById(selId).value);
+    const el = document.getElementById(prevId);
+    if (!el) return;
+    el.textContent = item?.emoji ?? '';
+    el.style.filter = item ? emojiFilterStr(item.hue, item.sat) : '';
+  });
 }
 
 function renderWinSelect() {
@@ -847,11 +922,14 @@ function genCode() {
     return '// Add starting items above to generate code.';
   }
 
-  // Build an item literal, appending hue/sat only when they differ from defaults
-  const itemLiteral = it => {
+  // Build an item literal. hue/sat appended only when non-default.
+  // discFlag (only passed for multi-output results) emits panel:true / find:true.
+  const itemLiteral = (it, discFlag) => {
     let s = `{ id: ${q(it.id)}, emoji: ${q(it.emoji)}, name: ${q(it.name)}`;
     if (it.hue) s += `, hue: ${it.hue}`;
     if (it.sat != null && it.sat !== 100) s += `, sat: ${it.sat}`;
+    if (discFlag === true)  s += `, panel: true`;
+    if (discFlag === false) s += `, find: true`;
     return s + ' }';
   };
 
@@ -861,11 +939,11 @@ function genCode() {
 
   const recipeLines = S.recipes.map(r => {
     if (r.results.length === 1) {
-      // Single output — compact format
+      // Single output — compact format (always a discovery; no flag needed)
       return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: ${itemLiteral(r.results[0])} }`;
     } else {
-      // Multiple outputs — array format
-      const resItems = r.results.map(res => `        ${itemLiteral(res)}`).join(',\n');
+      // Multiple outputs — array format, each tagged panel:true (Discovery) or find:true (New Find)
+      const resItems = r.results.map(res => `        ${itemLiteral(res, res.disc !== false)}`).join(',\n');
       return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: [\n${resItems},\n    ] }`;
     }
   }).join(',\n');

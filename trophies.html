@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emojicraft — Trophies</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
+
+<!-- Twemoji — iOS-style cross-platform emojis -->
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+
+<style>
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Canyon theme (matches the game's default) */
+:root {
+  --bg:        #FDF4EB;
+  --surface:   #FFFFFF;
+  --border:    #D4905A;
+  --border-lt: #EEC898;
+  --text:      #2A1008;
+  --muted:     #7A4020;
+  --accent:    #C07030;
+  --accent-dk: #8C4A20;
+  --hdr-from:  #180806;
+  --hdr-to:    #5C2A18;
+  --hdr-muted: rgba(238,184,104,.55);
+}
+
+img.emoji { display: inline-block; width: 1em; height: 1em; vertical-align: -.1em; margin: 0 !important; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+}
+
+/* ── Banner ──────────────────────────────────────────────────────────────── */
+.site-banner {
+  width: 100%;
+  background: linear-gradient(175deg, var(--hdr-from) 0%, var(--hdr-to) 100%);
+  border-bottom: 2px solid rgba(255,255,255,.07);
+}
+.banner-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; max-width: 1100px; margin: 0 auto; gap: 12px;
+}
+.banner-logo { font-size: 1.4rem; font-weight: 900; color: #fff; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+.banner-logo span { color: var(--hdr-muted); font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.back-link {
+  color: rgba(255,255,255,.85); text-decoration: none; font-size: .8rem; font-weight: 700;
+  border: 1.5px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08);
+  padding: 7px 13px; border-radius: 10px; white-space: nowrap; transition: background .15s;
+}
+.back-link:hover { background: rgba(255,255,255,.16); }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+main { width: min(760px, calc(100vw - 32px)); padding: 28px 0 60px; flex: 1; }
+.page-head { text-align: center; margin-bottom: 8px; }
+.page-head h1 { font-size: 1.6rem; font-weight: 800; }
+.page-head p  { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+
+.progress-bar-wrap {
+  max-width: 360px; margin: 16px auto 28px;
+}
+.progress-track { height: 10px; border-radius: 99px; background: rgba(0,0,0,.08); overflow: hidden; }
+.progress-fill  { height: 100%; background: linear-gradient(90deg, var(--accent), #FFAC00); border-radius: 99px; transition: width .6s cubic-bezier(.22,1,.36,1); }
+.progress-text  { text-align: center; font-size: .78rem; font-weight: 700; color: var(--muted); margin-top: 8px; }
+
+/* ── Trophy grid ─────────────────────────────────────────────────────────── */
+.trophy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+.trophy {
+  position: relative;
+  background: var(--surface);
+  border: 1.5px solid var(--border-lt);
+  border-radius: 16px;
+  padding: 18px 10px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  cursor: pointer;
+  transition: transform .14s, box-shadow .14s, border-color .14s;
+  text-align: center;
+}
+.trophy:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(0,0,0,.1); border-color: var(--border); }
+.trophy.locked { cursor: default; }
+.trophy.locked:hover { transform: none; box-shadow: none; border-color: var(--border-lt); }
+
+.trophy-emoji {
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; line-height: 1;
+}
+.trophy-emoji img.emoji { width: 56px !important; height: 56px !important; }
+.trophy.locked .trophy-emoji { filter: grayscale(1) brightness(.55) opacity(.4) !important; }
+
+.trophy-name {
+  font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.trophy.locked .trophy-name { color: var(--muted); letter-spacing: .18em; }
+.trophy-date { font-size: .6rem; color: var(--muted); margin-top: -4px; }
+
+.unlock-badge {
+  position: absolute; top: 8px; right: 8px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: .62rem; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.empty-hint { color: var(--muted); font-style: italic; text-align: center; padding: 40px 0; }
+
+/* ── Tooltip (works on hover + tap) ──────────────────────────────────────── */
+#tooltip {
+  position: fixed; z-index: 100;
+  transform: translate(-50%, -100%);
+  background: var(--text); color: #fff;
+  font-size: .76rem; font-weight: 600; line-height: 1.35;
+  padding: 8px 12px; border-radius: 9px;
+  max-width: 240px; text-align: center;
+  pointer-events: none; opacity: 0;
+  transition: opacity .15s;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28);
+}
+#tooltip.show { opacity: 1; }
+#tooltip::after {
+  content: ''; position: absolute; left: 50%; top: 100%;
+  transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: var(--text);
+}
+
+footer { padding: 18px; }
+footer a { font-size: 1.5rem; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="site-banner">
+  <div class="banner-top">
+    <div class="banner-logo">🏆 EMOJICRAFT <span>Trophies</span></div>
+    <a class="back-link" href="index.html">← Back to game</a>
+  </div>
+</div>
+
+<main>
+  <div class="page-head">
+    <h1>Trophy Cabinet</h1>
+    <p>Complete a daily puzzle to unlock its trophy. Hover or tap a trophy for details.</p>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text" id="progressText">0 of 0 unlocked</div>
+  </div>
+
+  <div class="trophy-grid" id="trophyGrid"></div>
+</main>
+
+<div id="tooltip"></div>
+
+<footer><a href="index.html" title="Back to game">🎮</a></footer>
+
+<!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
+<script src="puzzles.js?v=20260530a"></script>
+<script>
+function parseEmojis(el) {
+  if (typeof twemoji === 'undefined' || !el) return;
+  twemoji.parse(el, { folder:'svg', ext:'.svg',
+    base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
+}
+
+function emojiFilter(item) {
+  const hue = +(item?.hue ?? 0);
+  const sat = item?.sat == null ? 100 : +item.sat;
+  if (hue === 0 && sat === 100) return '';
+  return `hue-rotate(${hue}deg) saturate(${sat}%)`;
+}
+
+// Resolve an item id to its full definition within a puzzle (starting items + all results)
+function resolveItem(puzzle, id) {
+  const all = [...puzzle.startingItems];
+  puzzle.recipes.forEach(r => {
+    const res = Array.isArray(r.result) ? r.result : [r.result];
+    all.push(...res);
+  });
+  return all.find(i => i.id === id);
+}
+
+// Non-empty puzzles only; dated ones newest-first, then the featured default
+function getPuzzleList() {
+  const dated = Object.entries(PUZZLES)
+    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0)
+    .sort(([a],[b]) => b.localeCompare(a));
+  const def = PUZZLES['default'];
+  if (def?.startingItems?.length > 0) dated.push(['default', def]);
+  return dated;
+}
+
+function loadCompletions() {
+  try { return JSON.parse(localStorage.getItem('emojicraft-trophies') || '{}'); }
+  catch (e) { return {}; }
+}
+
+function fmtCompletedDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return 'an unknown date';
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function puzzleDateLabel(key) {
+  if (key === 'default') return 'Featured';
+  return new Date(key + 'T12:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+let tipEl;
+function showTip(target, msg) {
+  tipEl.textContent = msg;
+  const r = target.getBoundingClientRect();
+  tipEl.style.left = (r.left + r.width / 2) + 'px';
+  tipEl.style.top  = (r.top - 10) + 'px';
+  tipEl.classList.add('show');
+}
+function hideTip() { tipEl.classList.remove('show'); }
+
+// ── Render ──────────────────────────────────────────────────────────────────────
+function render() {
+  tipEl = document.getElementById('tooltip');
+  const grid = document.getElementById('trophyGrid');
+  const completions = loadCompletions();
+  const puzzles = getPuzzleList();
+
+  if (puzzles.length === 0) {
+    grid.innerHTML = '<div class="empty-hint">No puzzles available yet.</div>';
+    return;
+  }
+
+  let unlocked = 0;
+  grid.innerHTML = '';
+  puzzles.forEach(([key, puzzle]) => {
+    const done    = !!completions[key];
+    if (done) unlocked++;
+    const winItem = resolveItem(puzzle, puzzle.winItem);
+    const emoji   = winItem?.emoji ?? '🏆';
+
+    const card = document.createElement('div');
+    card.className = 'trophy' + (done ? '' : ' locked');
+
+    const filter = done && winItem ? emojiFilter(winItem) : '';
+    card.innerHTML = `
+      ${done ? '<div class="unlock-badge">✓</div>' : ''}
+      <div class="trophy-emoji"${filter ? ` style="filter:${filter}"` : ''}>${emoji}</div>
+      <div class="trophy-name">${done ? puzzle.title : '???'}</div>
+      <div class="trophy-date">${puzzleDateLabel(key)}</div>
+    `;
+
+    const msg = done
+      ? `You completed the puzzle "${puzzle.title}" on ${fmtCompletedDate(completions[key].completedAt)}`
+      : `Locked — complete the ${puzzleDateLabel(key)} puzzle to unlock`;
+
+    // Hover (desktop) + tap (mobile)
+    card.addEventListener('mouseenter', () => showTip(card, msg));
+    card.addEventListener('mouseleave', hideTip);
+    card.addEventListener('click', e => { e.stopPropagation(); showTip(card, msg); });
+
+    grid.appendChild(card);
+  });
+
+  parseEmojis(grid);
+
+  const total = puzzles.length;
+  document.getElementById('progressFill').style.width = (total ? (unlocked / total * 100) : 0) + '%';
+  document.getElementById('progressText').textContent = `${unlocked} of ${total} unlocked`;
+}
+
+// Tap anywhere else dismisses the tooltip (mobile)
+document.addEventListener('click', hideTip);
+window.addEventListener('scroll', hideTip, { passive: true });
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "alchemix",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "3400", "--directory", "C:\\Users\\Ryan - TAFE Teacher\\projects\\alchemix"],
+      "port": 3400
+    }
+  ]
+}

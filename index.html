@@ -445,7 +445,7 @@ main {
 .discovery-toast.find .toast-cap { color: var(--muted); }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
-footer { padding: 16px; font-size: .75rem; color: var(--muted); }
+footer { padding: 16px; font-size: .75rem; color: var(--muted); display: flex; gap: 22px; justify-content: center; }
 footer a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 1.6rem; line-height: 1; }
 footer a:hover { text-decoration: underline; }
 
@@ -569,7 +569,8 @@ footer a:hover { text-decoration: underline; }
 </div>
 
 <footer>
-  <a href="https://buymeacoffee.com/ryanbf" target="_blank" rel="noopener">☕</a>
+  <a href="trophies.html" title="Trophies">🏆</a>
+  <a href="https://buymeacoffee.com/ryanbf" target="_blank" rel="noopener" title="Buy me a coffee">☕</a>
 </footer>
 
 <!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
@@ -656,11 +657,21 @@ function getCriticalPathIds() {
   return critical;
 }
 
+// Is a recipe output a "discovery" (panel slot) or just a "new find" (board only)?
+//   find: true  → always a new find (never in the panel)
+//   panel: true → always a discovery (forced into the panel)
+//   neither     → fall back to the critical path to the win item
+function isDiscovery(item, criticalSet) {
+  if (item.find  === true) return false;
+  if (item.panel === true) return true;
+  return criticalSet.has(item.id);
+}
+
 function getAllResultItems() {
   const critical = getCriticalPathIds();
   return G.puzzle.recipes.flatMap(r => {
     const results = Array.isArray(r.result) ? r.result : [r.result];
-    return results.filter(res => critical.has(res.id));
+    return results.filter(res => isDiscovery(res, critical));
   });
 }
 
@@ -970,9 +981,9 @@ function combineItems(a,b) {
   // or a NEW FIND (off-path bonus → board only, no panel slot).
   newResults.forEach((result, i) => {
     setTimeout(() => {
-      const isWin       = result.id === G.puzzle.winItem;
-      const isDiscovery = critical.has(result.id);
-      if (isDiscovery) G.discoveries++;
+      const isWin     = result.id === G.puzzle.winItem;
+      const discovery = isDiscovery(result, critical);
+      if (discovery) G.discoveries++;
       const newItem = {...result, disc:G.items.length+1, isWin, entering:true};
       G.items.push(newItem);
 
@@ -980,20 +991,20 @@ function combineItems(a,b) {
       appendCard(newItem);
 
       // Only discoveries touch the panel
-      if (isDiscovery) {
+      if (discovery) {
         G.lastRevealedIds = new Set([result.id]);
         renderDiscPanel();
         parseEmojis(document.getElementById('discCircles'));
         G.lastRevealedIds = new Set();
       }
 
-      showDiscoveryToast(result, isDiscovery);
+      showDiscoveryToast(result, discovery);
       setTimeout(() => { newItem.entering = false; }, 700);
 
       if (isWin) {
         setStatus(`${result.emoji} ${result.name} — Victory!`,'win');
         setTimeout(()=>{ stopTimer(); showWin(); }, 1200);
-      } else if (isDiscovery) {
+      } else if (discovery) {
         setStatus(`${result.emoji} Discovered: ${result.name}!`,'success',2600);
       } else {
         setStatus(`${result.emoji} New find: ${result.name}!`,'find',2600);
@@ -1085,6 +1096,18 @@ function showWin() {
   document.getElementById('winOverlay').classList.add('open');
   parseEmojis(document.querySelector('.win-modal'));
   spawnConfetti();
+  recordCompletion(G.puzzleKey);
+}
+
+// Persist a puzzle completion so the Trophies page can show it as earned.
+function recordCompletion(key) {
+  try {
+    const store = JSON.parse(localStorage.getItem('emojicraft-trophies') || '{}');
+    if (!store[key]) {
+      store[key] = { completedAt: new Date().toISOString(), title: G.puzzle.title };
+      localStorage.setItem('emojicraft-trophies', JSON.stringify(store));
+    }
+  } catch (e) { /* localStorage unavailable — non-fatal */ }
 }
 function restart() {
   document.getElementById('winOverlay').classList.remove('open');
