@@ -13,6 +13,10 @@
 //     title: "Your Puzzle Title",
 //     startingItems: [
 //       { id: "unique_id", emoji: "🔤", name: "Display Name" },
+//       // Optional colour tweak — recolour an emoji via CSS filters:
+//       //   hue : 0–360  (degrees to rotate the colour wheel; e.g. 60 turns a yellow face green)
+//       //   sat : 0–300  (saturation %, default 100; lower = washed out, higher = vivid)
+//       { id: "sick_man", emoji: "🧑", name: "Sick Man", hue: 70, sat: 130 },
 //     ],
 //     recipes: [
 //

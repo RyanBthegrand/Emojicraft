@@ -181,7 +181,31 @@ textarea {
   border-radius: 14px; overflow: hidden;
   box-shadow: 0 20px 60px rgba(0,0,0,.4);
   background: #fff;
+  display: flex; flex-direction: column;
 }
+
+/* Hue / saturation adjuster below the picker */
+.emoji-adjust {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.adjust-preview {
+  width: 54px; height: 54px; flex-shrink: 0;
+  border-radius: 12px; background: #fff;
+  border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; line-height: 1;
+}
+.adjust-controls { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.adjust-row label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: .68rem; margin-bottom: 2px;
+}
+.adjust-val { color: var(--accent); font-weight: 800; letter-spacing: 0; text-transform: none; }
+.adjust-row input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; padding: 0; }
+.adjust-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 2px; }
 .emoji-modal-close {
   position: absolute; top: 8px; right: 8px; z-index: 2;
   width: 30px; height: 30px; border-radius: 50%;
@@ -488,10 +512,29 @@ emoji-picker {
 </div><!-- .page -->
 
 <!-- ── Emoji picker modal ─────────────────────────────────────────────────── -->
-<div class="emoji-modal" id="emojiModal" onclick="if(event.target===this)closeEmojiPicker()">
+<div class="emoji-modal" id="emojiModal">
   <div class="emoji-modal-inner">
-    <button class="emoji-modal-close" onclick="closeEmojiPicker()" title="Close" type="button">✕</button>
+    <button class="emoji-modal-close" onclick="commitEmojiPicker()" title="Done" type="button">✕</button>
     <emoji-picker class="light"></emoji-picker>
+
+    <!-- Hue / Saturation adjustment -->
+    <div class="emoji-adjust">
+      <div class="adjust-preview"><span id="adjustPreview">✨</span></div>
+      <div class="adjust-controls">
+        <div class="adjust-row">
+          <label>Hue <span class="adjust-val" id="hueVal">0°</span></label>
+          <input type="range" id="hueSlider" min="0" max="360" value="0" step="1" oninput="onAdjustChange()">
+        </div>
+        <div class="adjust-row">
+          <label>Saturation <span class="adjust-val" id="satVal">100%</span></label>
+          <input type="range" id="satSlider" min="0" max="300" value="100" step="5" oninput="onAdjustChange()">
+        </div>
+        <div class="adjust-actions">
+          <button class="btn btn-outline btn-sm" onclick="resetAdjust()" type="button">Reset colour</button>
+          <button class="btn btn-primary btn-sm" onclick="commitEmojiPicker()" type="button">Apply</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -520,6 +563,12 @@ function makeId(name) {
   return base || 'item_' + Date.now();
 }
 
+// Inline style attribute that applies an item's hue/sat tweak (or '' if default)
+function emojiStyleAttr(item) {
+  const f = emojiFilterStr(item?.hue, item?.sat);
+  return f ? ` style="filter:${f}"` : '';
+}
+
 // All items currently known (starting + all recipe outputs)
 function allItems() {
   return [
@@ -546,18 +595,36 @@ function init() {
   update();
 }
 
+// Read emoji + optional hue/sat tweaks from a field into an item object
+function readEmojiField(input) {
+  const item = { emoji: input.value.trim() || '❓' };
+  const hue = +input.dataset.hue || 0;
+  const sat = input.dataset.sat == null || input.dataset.sat === '' ? 100 : +input.dataset.sat;
+  if (hue !== 0)   item.hue = hue;
+  if (sat !== 100) item.sat = sat;
+  return item;
+}
+
+// Clear a field's emoji + colour adjustments back to defaults
+function clearEmojiField(input) {
+  input.value = '';
+  input.dataset.hue = 0;
+  input.dataset.sat = 100;
+  input.style.filter = '';
+}
+
 // ── Starting items ────────────────────────────────────────────────────────────
 function addStartItem() {
-  const emoji = document.getElementById('siEmoji').value.trim() || '❓';
-  const name  = document.getElementById('siName').value.trim();
+  const emojiInput = document.getElementById('siEmoji');
+  const name = document.getElementById('siName').value.trim();
   if (!name) { document.getElementById('siName').focus(); return; }
 
   const id = ensureUniqueId(makeId(name));
-  S.startingItems.push({ id, emoji, name });
+  S.startingItems.push({ id, name, ...readEmojiField(emojiInput) });
 
-  document.getElementById('siEmoji').value = '';
-  document.getElementById('siName').value  = '';
-  document.getElementById('siEmoji').focus();
+  clearEmojiField(emojiInput);
+  document.getElementById('siName').value = '';
+  emojiInput.focus();
   update();
 }
 
@@ -623,12 +690,12 @@ function addRecipe() {
   const rows = Array.from(document.querySelectorAll('#resultRows .result-row'));
   const results = [];
   for (let i = 0; i < rows.length; i++) {
-    const emoji = rows[i].querySelector('.rResEmoji').value.trim() || '✨';
-    const name  = rows[i].querySelector('.rResName').value.trim();
+    const emojiInput = rows[i].querySelector('.rResEmoji');
+    const name = rows[i].querySelector('.rResName').value.trim();
     if (i === 0 && !name) { rows[i].querySelector('.rResName').focus(); return; }
     if (!name) continue; // skip empty bonus rows
     const id = ensureUniqueId(makeId(name));
-    results.push({ id, emoji, name });
+    results.push({ id, name, ...readEmojiField(emojiInput) });
   }
   if (results.length === 0) { rows[0]?.querySelector('.rResName').focus(); return; }
 
@@ -679,7 +746,7 @@ function renderStartList() {
   }
   el.innerHTML = S.startingItems.map(item => `
     <div class="item-chip">
-      <span class="chip-emoji">${item.emoji}</span>
+      <span class="chip-emoji"${emojiStyleAttr(item)}>${item.emoji}</span>
       <span>${item.name}</span>
       <button onclick="removeStartItem('${item.id}')" title="Remove">✕</button>
     </div>
@@ -698,13 +765,13 @@ function renderRecipeList() {
     const itemB = itemById(r.b);
     const resultDisplay = r.results.map((res, ri) => `
       ${ri > 0 ? '<span class="plus">+</span>' : ''}
-      <div class="recipe-result"><b>${res.emoji}</b> ${res.name}</div>
+      <div class="recipe-result"><b${emojiStyleAttr(res)}>${res.emoji}</b> ${res.name}</div>
     `).join('');
     return `
       <div class="recipe-row">
-        <div class="recipe-ingredient">${itemA?.emoji ?? '?'} ${itemA?.name ?? r.a}</div>
+        <div class="recipe-ingredient"><span${emojiStyleAttr(itemA)}>${itemA?.emoji ?? '?'}</span> ${itemA?.name ?? r.a}</div>
         <span class="plus">+</span>
-        <div class="recipe-ingredient">${itemB?.emoji ?? '?'} ${itemB?.name ?? r.b}</div>
+        <div class="recipe-ingredient"><span${emojiStyleAttr(itemB)}>${itemB?.emoji ?? '?'}</span> ${itemB?.name ?? r.b}</div>
         <span class="eq">=</span>
         ${resultDisplay}
         <button class="remove-btn" onclick="removeRecipe(${i})" title="Remove recipe">✕</button>
@@ -763,7 +830,9 @@ function renderWinSelect() {
 
 function renderWinPreview() {
   const item = itemById(S.winItem);
-  document.getElementById('winPreview').textContent = item ? item.emoji : '—';
+  const el = document.getElementById('winPreview');
+  el.textContent = item ? item.emoji : '—';
+  el.style.filter = item ? emojiFilterStr(item.hue, item.sat) : '';
 }
 
 // ── Code generation ───────────────────────────────────────────────────────────
@@ -778,20 +847,25 @@ function genCode() {
     return '// Add starting items above to generate code.';
   }
 
+  // Build an item literal, appending hue/sat only when they differ from defaults
+  const itemLiteral = it => {
+    let s = `{ id: ${q(it.id)}, emoji: ${q(it.emoji)}, name: ${q(it.name)}`;
+    if (it.hue) s += `, hue: ${it.hue}`;
+    if (it.sat != null && it.sat !== 100) s += `, sat: ${it.sat}`;
+    return s + ' }';
+  };
+
   const startLines = S.startingItems
-    .map(i => `    { id: ${q(i.id)}, emoji: ${q(i.emoji)}, name: ${q(i.name)} }`)
+    .map(i => `    ${itemLiteral(i)}`)
     .join(',\n');
 
   const recipeLines = S.recipes.map(r => {
     if (r.results.length === 1) {
       // Single output — compact format
-      const res = r.results[0];
-      return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)} } }`;
+      return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: ${itemLiteral(r.results[0])} }`;
     } else {
       // Multiple outputs — array format
-      const resItems = r.results.map(res =>
-        `        { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)} }`
-      ).join(',\n');
+      const resItems = r.results.map(res => `        ${itemLiteral(res)}`).join(',\n');
       return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: [\n${resItems},\n    ] }`;
     }
   }).join(',\n');
@@ -826,14 +900,59 @@ function copyCode() {
   });
 }
 
-// ── Emoji picker ──────────────────────────────────────────────────────────────
+// ── Emoji picker + hue/saturation adjuster ────────────────────────────────────
 let emojiTarget = null;
+const pickState = { emoji: '', hue: 0, sat: 100 };
+
+// CSS filter string from hue (deg) + saturation (%). Empty when default colours.
+function emojiFilterStr(hue, sat) {
+  hue = +hue || 0;
+  sat = (sat == null || sat === '') ? 100 : +sat;
+  if (hue === 0 && sat === 100) return '';
+  return `hue-rotate(${hue}deg) saturate(${sat}%)`;
+}
 
 function openEmojiPicker(input) {
   emojiTarget = input;
+  pickState.emoji = input.value || '';
+  pickState.hue   = +input.dataset.hue || 0;
+  pickState.sat   = input.dataset.sat == null || input.dataset.sat === '' ? 100 : +input.dataset.sat;
+  document.getElementById('hueSlider').value = pickState.hue;
+  document.getElementById('satSlider').value = pickState.sat;
+  syncAdjustUI();
   document.getElementById('emojiModal').classList.add('open');
 }
-function closeEmojiPicker() {
+
+// Live-update the preview swatch + value labels
+function syncAdjustUI() {
+  const prev = document.getElementById('adjustPreview');
+  prev.textContent  = pickState.emoji || '✨';
+  prev.style.filter = emojiFilterStr(pickState.hue, pickState.sat);
+  document.getElementById('hueVal').textContent = pickState.hue + '°';
+  document.getElementById('satVal').textContent = pickState.sat + '%';
+}
+
+function onAdjustChange() {
+  pickState.hue = +document.getElementById('hueSlider').value;
+  pickState.sat = +document.getElementById('satSlider').value;
+  syncAdjustUI();
+}
+
+function resetAdjust() {
+  pickState.hue = 0; pickState.sat = 100;
+  document.getElementById('hueSlider').value = 0;
+  document.getElementById('satSlider').value = 100;
+  syncAdjustUI();
+}
+
+// Write the working emoji + colour adjustments back to the field, then close.
+function commitEmojiPicker() {
+  if (emojiTarget) {
+    emojiTarget.value = pickState.emoji;
+    emojiTarget.dataset.hue = pickState.hue;
+    emojiTarget.dataset.sat = pickState.sat;
+    emojiTarget.style.filter = emojiFilterStr(pickState.hue, pickState.sat);
+  }
   document.getElementById('emojiModal').classList.remove('open');
   emojiTarget = null;
 }
@@ -849,23 +968,18 @@ document.addEventListener('click', e => {
   openEmojiPicker(field);
 });
 
-// When an emoji is chosen, drop it into the target field and move focus to the name
+// Choosing an emoji updates the working preview but KEEPS the modal open so the
+// user can fine-tune hue/saturation before applying.
 document.querySelector('#emojiModal emoji-picker').addEventListener('emoji-click', e => {
-  if (emojiTarget) {
-    emojiTarget.value = e.detail.unicode;
-    const nameField = emojiTarget.id === 'siEmoji'
-      ? document.getElementById('siName')
-      : emojiTarget.closest('.result-row')?.querySelector('.rResName');
-    closeEmojiPicker();
-    nameField?.focus();
-  } else {
-    closeEmojiPicker();
-  }
+  pickState.emoji = e.detail.unicode;
+  syncAdjustUI();
 });
 
-// Esc closes the picker
+// Esc applies + closes (nothing is lost)
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeEmojiPicker();
+  if (e.key === 'Escape' && document.getElementById('emojiModal').classList.contains('open')) {
+    commitEmojiPicker();
+  }
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

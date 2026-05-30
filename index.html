@@ -573,7 +573,7 @@ footer a:hover { text-decoration: underline; }
 </footer>
 
 <!-- ─────────────────────────── SCRIPTS ─────────────────────────────────── -->
-<script src="puzzles.js?v=20260529e"></script>
+<script src="puzzles.js?v=20260530a"></script>
 <script>
 // ── Theme system ──────────────────────────────────────────────────────────────
 const THEMES = {
@@ -664,6 +664,15 @@ function getAllResultItems() {
   });
 }
 
+// Build a CSS filter string from an item's optional hue / saturation tweaks.
+// Returns '' when the item uses default colours (hue 0, saturation 100).
+function emojiFilter(item) {
+  const hue = +(item?.hue ?? 0);
+  const sat = item?.sat == null ? 100 : +item.sat;
+  if (hue === 0 && sat === 100) return '';
+  return `hue-rotate(${hue}deg) saturate(${sat}%)`;
+}
+
 function parseEmojis(el) {
   if (typeof twemoji === 'undefined' || !el) return;
   // GitHub asset path has full emoji coverage (the npm /dist mirror 404s on newer codepoints)
@@ -703,8 +712,10 @@ function closeArchiveDropdown() {
 function renderArchive() {
   const puzzle = G.puzzle;
   // Update button: first starting item emoji + title
-  const btnEmoji = puzzle.startingItems[0]?.emoji ?? '⚗️';
-  document.getElementById('archiveBtnEmoji').textContent = btnEmoji;
+  const btnItem  = puzzle.startingItems[0];
+  const btnEmojiEl = document.getElementById('archiveBtnEmoji');
+  btnEmojiEl.textContent = btnItem?.emoji ?? '⚗️';
+  btnEmojiEl.style.filter = btnItem ? emojiFilter(btnItem) : '';
   document.getElementById('archiveBtnName').textContent  = puzzle.title;
   parseEmojis(document.getElementById('archiveBtn'));
 
@@ -715,9 +726,11 @@ function renderArchive() {
     const isActive = key === G.puzzleKey;
     const btn = document.createElement('button');
     btn.className = 'arc-drop-item' + (isActive ? ' active' : '');
-    const emoji = puz.startingItems[0]?.emoji ?? '⚗️';
+    const dItem = puz.startingItems[0];
+    const emoji = dItem?.emoji ?? '⚗️';
+    const df = dItem ? emojiFilter(dItem) : '';
     btn.innerHTML = `
-      <span class="arc-drop-emoji">${emoji}</span>
+      <span class="arc-drop-emoji"${df?` style="filter:${df}"`:''}>${emoji}</span>
       <span class="arc-drop-info">
         <div class="arc-drop-name">${puz.title}</div>
         <div class="arc-drop-date">${archiveDate(key)}</div>
@@ -839,7 +852,8 @@ function buildCard(item) {
   el.dataset.id = item.id;
   if (item.disc>0 && !item.isWin) el.dataset.disc = Math.min(item.disc,5);
   el.setAttribute('role','button'); el.setAttribute('tabindex','0'); el.setAttribute('aria-label',item.name);
-  el.innerHTML = `<div class="card-emoji">${item.emoji}</div>
+  const f = emojiFilter(item);
+  el.innerHTML = `<div class="card-emoji"${f?` style="filter:${f}"`:''}>${item.emoji}</div>
     <div class="card-bottom"><span class="card-label">${item.name}</span></div>`;
   el.addEventListener('pointerdown', e => onCardPointerDown(e, item.id));
   el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(item.id);} });
@@ -860,6 +874,7 @@ function renderDiscPanel() {
     if (isNew) wrap.classList.add('disc-revealing');
     const inner = document.createElement('div'); inner.className = 'disc-inner';
     inner.textContent = found ? found.emoji : '?';
+    if (found) inner.style.filter = emojiFilter(found);
     const lbl = document.createElement('div'); lbl.className = 'disc-name-label';
     lbl.textContent = found ? found.name : '';
     wrap.appendChild(inner); wrap.appendChild(lbl); el.appendChild(wrap);
@@ -972,7 +987,7 @@ function combineItems(a,b) {
         G.lastRevealedIds = new Set();
       }
 
-      showDiscoveryToast(result.emoji, result.name, isDiscovery);
+      showDiscoveryToast(result, isDiscovery);
       setTimeout(() => { newItem.entering = false; }, 700);
 
       if (isWin) {
@@ -1009,16 +1024,17 @@ function setStatus(text,type='hint',dur) {
 // ── Discovery Toast ───────────────────────────────────────────────────────────
 // Small bottom-left chip so the player sees what just slid onto the board.
 // Multiple toasts stack vertically without overlapping.
-function showDiscoveryToast(emoji, name, isDiscovery = true) {
+function showDiscoveryToast(item, isDiscovery = true) {
   const TOAST_H = 70, BASE = 20;
   const stack = document.querySelectorAll('.discovery-toast').length;
   const el = document.createElement('div');
   el.className = 'discovery-toast' + (isDiscovery ? '' : ' find');
   el.style.bottom = (BASE + stack * (TOAST_H + 8)) + 'px';
-  el.innerHTML = `<span class="toast-emoji">${emoji}</span>
+  const f = emojiFilter(item);
+  el.innerHTML = `<span class="toast-emoji"${f?` style="filter:${f}"`:''}>${item.emoji}</span>
     <div class="toast-body">
       <div class="toast-cap">${isDiscovery ? '✦ Discovery' : '＋ New Find'}</div>
-      <div class="toast-name">${name}</div>
+      <div class="toast-name">${item.name}</div>
     </div>`;
   document.body.appendChild(el);
   parseEmojis(el);
@@ -1054,7 +1070,9 @@ function spawnParticles(el) {
 function showWin() {
   G.won=true;
   const winItem=G.items.find(i=>i.isWin);
-  document.getElementById('winIcon').textContent = winItem?.emoji??'🏆';
+  const winIconEl = document.getElementById('winIcon');
+  winIconEl.textContent = winItem?.emoji??'🏆';
+  winIconEl.style.filter = winItem ? emojiFilter(winItem) : '';
   document.getElementById('winSub').textContent  = `You completed "${G.puzzle.title}"`;
   document.getElementById('winTime').textContent = `⏱ ${fmtTime(T.elapsed)}`;
   document.getElementById('wDisc').textContent   = G.discoveries;
