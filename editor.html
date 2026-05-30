@@ -279,16 +279,6 @@ textarea {
 .result-row .field-emoji { width: 80px; flex-shrink: 0; }
 .result-row .field-emoji input { text-align: center; font-size: 1.2rem; }
 .result-row .field-name { flex: 1; }
-.result-badge {
-  font-size: .65rem; font-weight: 700; border-radius: 4px;
-  padding: 2px 7px; white-space: nowrap; flex-shrink: 0;
-  align-self: center; margin-bottom: 1px;
-  border: none; cursor: pointer; font-family: inherit;
-  transition: background .15s, color .15s;
-}
-.result-badge:hover { opacity: .8; }
-.result-badge.primary { color: var(--success); background: #dcfce7; }
-.result-badge.bonus   { color: var(--muted);   background: rgba(0,0,0,.07); }
 .result-row .remove-row {
   align-self: flex-end; padding-bottom: 2px;
 }
@@ -404,7 +394,7 @@ textarea {
         <div class="recipe-outputs-section">
           <div class="recipe-outputs-label">
             Outputs
-            <small>— click <b>★ Panel</b> / <b>◦ Board</b> to choose what appears in the discoveries panel</small>
+            <small>— the game automatically tracks items on the path to the win condition</small>
           </div>
           <div id="resultRows"></div>
           <button class="btn btn-outline btn-sm" id="addOutputBtn" onclick="addResultRow()">
@@ -554,9 +544,6 @@ function addResultRow() {
       <input class="rResName" type="text" placeholder="${isPrimary ? 'e.g. Iron Bar' : 'e.g. Bonus Item'}"
         onkeydown="if(event.key==='Enter')addRecipe()">
     </div>
-    <button class="result-badge ${isPrimary ? 'primary' : 'bonus'}" onclick="togglePanel(this)" type="button" title="Click to toggle discoveries panel / board only">
-      ${isPrimary ? '★ Panel' : '◦ Board'}
-    </button>
     ${!isPrimary ? `<button class="btn btn-danger btn-sm remove-row" onclick="removeResultRow(this)" type="button">✕</button>` : ''}
   `;
 
@@ -572,13 +559,6 @@ function removeResultRow(btn) {
   const container = document.getElementById('resultRows');
   document.getElementById('addOutputBtn').style.display =
     container.querySelectorAll('.result-row').length >= 5 ? 'none' : 'inline-flex';
-}
-
-function togglePanel(btn) {
-  const isPanel = btn.classList.contains('primary');
-  btn.classList.toggle('primary', !isPanel);
-  btn.classList.toggle('bonus',  isPanel);
-  btn.textContent = isPanel ? '◦ Board' : '★ Panel';
 }
 
 function resetResultRows() {
@@ -601,9 +581,8 @@ function addRecipe() {
     const name  = rows[i].querySelector('.rResName').value.trim();
     if (i === 0 && !name) { rows[i].querySelector('.rResName').focus(); return; }
     if (!name) continue; // skip empty bonus rows
-    const id    = ensureUniqueId(makeId(name));
-    const panel = rows[i].querySelector('.result-badge').classList.contains('primary');
-    results.push({ id, emoji, name, panel });
+    const id = ensureUniqueId(makeId(name));
+    results.push({ id, emoji, name });
   }
   if (results.length === 0) { rows[0]?.querySelector('.rResName').focus(); return; }
 
@@ -671,16 +650,10 @@ function renderRecipeList() {
   el.innerHTML = S.recipes.map((r, i) => {
     const itemA = itemById(r.a);
     const itemB = itemById(r.b);
-    const multiResult = r.results.length > 1;
-    const resultDisplay = r.results.map((res, ri) => {
-      const badge = multiResult
-        ? `<span class="result-badge ${res.panel ? 'primary' : 'bonus'}" style="cursor:default">${res.panel ? '★' : '◦'}</span>`
-        : '';
-      return `
-        ${ri > 0 ? '<span class="plus">+</span>' : ''}
-        <div class="recipe-result">${badge}<b>${res.emoji}</b> ${res.name}</div>
-      `;
-    }).join('');
+    const resultDisplay = r.results.map((res, ri) => `
+      ${ri > 0 ? '<span class="plus">+</span>' : ''}
+      <div class="recipe-result"><b>${res.emoji}</b> ${res.name}</div>
+    `).join('');
     return `
       <div class="recipe-row">
         <div class="recipe-ingredient">${itemA?.emoji ?? '?'} ${itemA?.name ?? r.a}</div>
@@ -769,11 +742,10 @@ function genCode() {
       const res = r.results[0];
       return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)} } }`;
     } else {
-      // Multiple outputs — array format; panel:true marks which appear in discoveries
-      const resItems = r.results.map(res => {
-        const panelPart = res.panel ? ', panel: true' : '';
-        return `        { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)}${panelPart} }`;
-      }).join(',\n');
+      // Multiple outputs — array format
+      const resItems = r.results.map(res =>
+        `        { id: ${q(res.id)}, emoji: ${q(res.emoji)}, name: ${q(res.name)} }`
+      ).join(',\n');
       return `    { ingredients: [${q(r.a)}, ${q(r.b)}], result: [\n${resItems},\n    ] }`;
     }
   }).join(',\n');

@@ -197,6 +197,17 @@ main {
 }
 @media (max-width: 480px) {
   .cards-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  /* Compact banner so logo + archive button never wrap on narrow phones */
+  .banner-top { padding: 10px 14px 8px; gap: 8px; flex-wrap: nowrap; }
+  .banner-logo { font-size: 1.05rem; }
+  .banner-logo span { display: none; }   /* hide "Daily Puzzle" sub-label on mobile */
+  /* Constrain dropdown to viewport width, allow scroll if many entries */
+  .archive-dropdown {
+    max-width: min(250px, calc(100vw - 28px));
+    max-height: 50vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
@@ -406,6 +417,29 @@ main {
 .share-confirm   { font-size: .75rem; color: #22C55E; font-weight: 700; margin-top: 8px; opacity: 0; transition: opacity .3s; }
 .share-confirm.show { opacity: 1; }
 
+/* ── Discovery Toast (bottom-left slide-in notification) ─────────────────── */
+.discovery-toast {
+  position: fixed;
+  left: 14px;
+  border-radius: 12px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-lt);
+  box-shadow: 0 6px 22px rgba(0,0,0,.18);
+  pointer-events: none;
+  z-index: 240;
+  max-width: 220px;
+  animation: toastIn .32s cubic-bezier(.34,1.4,.64,1) forwards;
+}
+.toast-emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+.toast-emoji img.emoji { width: 1.5rem !important; height: 1.5rem !important; }
+.toast-body  { min-width: 0; }
+.toast-cap   { font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.toast-name  { font-size: .86rem; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 footer { padding: 16px; font-size: .75rem; color: var(--muted); }
 footer a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 1.6rem; line-height: 1; }
@@ -454,6 +488,8 @@ footer a:hover { text-decoration: underline; }
 @keyframes confettiFall {
   to { transform: translateY(105vh) rotate(720deg); opacity: 0; }
 }
+@keyframes toastIn  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+@keyframes toastOut { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(8px); } }
 </style>
 </head>
 <body>
@@ -582,7 +618,8 @@ const drag = {
 };
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-const localDate  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+// Always use Australian Eastern Time so every player worldwide is on the same daily schedule
+const localDate  = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
 const fmtDate    = s  => new Date(s+'T12:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 const fmtTime    = ms => { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
 const esc        = id => CSS.escape(id);
@@ -594,16 +631,32 @@ const findRecipe = (a,b) => {
   if (!r) return null;
   return Array.isArray(r.result) ? r.result : [r.result];
 };
-// Returns the items that appear in the discoveries panel.
-// Single-result recipes: always the one result.
-// Multi-result recipes: items marked panel:true, or the first item as a fallback
-// (so old puzzles without the panel flag continue to work unchanged).
+// Walk backwards from winItem to find every result item that MUST be created to win.
+// Only those items appear in the discoveries panel — bonus side-products are excluded.
+// This guarantees the panel is always 100 % complete exactly when the player wins.
+function getCriticalPathIds() {
+  const producedBy = {};
+  G.puzzle.recipes.forEach(r => {
+    const results = Array.isArray(r.result) ? r.result : [r.result];
+    results.forEach(res => { producedBy[res.id] = r; });
+  });
+  const critical = new Set();
+  const queue = [G.puzzle.winItem];
+  while (queue.length > 0) {
+    const id = queue.shift();
+    if (critical.has(id)) continue;
+    critical.add(id);
+    const recipe = producedBy[id];
+    if (recipe) recipe.ingredients.forEach(ing => { if (!critical.has(ing)) queue.push(ing); });
+  }
+  return critical;
+}
+
 function getAllResultItems() {
+  const critical = getCriticalPathIds();
   return G.puzzle.recipes.flatMap(r => {
     const results = Array.isArray(r.result) ? r.result : [r.result];
-    if (results.length === 1) return [results[0]];
-    const panelItems = results.filter(res => res.panel === true);
-    return panelItems.length > 0 ? panelItems : [results[0]];
+    return results.filter(res => critical.has(res.id));
   });
 }
 
@@ -615,19 +668,22 @@ function parseEmojis(el) {
 
 // ── Archive ───────────────────────────────────────────────────────────────────
 function getArchivePuzzles() {
+  // Filter out empty puzzle slots (e.g. a placeholder "default" with no startingItems)
   const dated = Object.entries(PUZZLES)
-    .filter(([k]) => k !== 'default')
+    .filter(([k, p]) => k !== 'default' && p.startingItems?.length > 0)
     .sort(([a],[b]) => b.localeCompare(a));
-  return [...dated, ['default', PUZZLES['default']]];
+  const def = PUZZLES['default'];
+  if (def?.startingItems?.length > 0) dated.push(['default', def]);
+  return dated;
 }
 
 function archiveDate(key) {
   if (key === 'default') return 'Classic';
+  const auFmt = d => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(d);
   const today = localDate();
   const yDate = new Date(); yDate.setDate(yDate.getDate()-1);
-  const yStr  = `${yDate.getFullYear()}-${String(yDate.getMonth()+1).padStart(2,'0')}-${String(yDate.getDate()).padStart(2,'0')}`;
-  if (key === today)  return 'Today';
-  if (key === yStr)   return 'Yesterday';
+  if (key === today)        return 'Today';
+  if (key === auFmt(yDate)) return 'Yesterday';
   return new Date(key+'T12:00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'});
 }
 
@@ -862,36 +918,35 @@ function combineItems(a,b) {
   startTimer(); G.attempts++;
   const results = findRecipe(a,b);
   if (!results) { render(); flash([a,b],'flash-fail'); setStatus("Those don't combine…",'fail',2200); return; }
-  // Only keep results not yet discovered
   const newResults = results.filter(r => !G.items.some(i=>i.id===r.id));
   if (newResults.length === 0) {
     const names = results.map(r=>r.name).join(' & ');
     render(); flash([a,b],'flash-known'); setStatus(`Already know how to make ${names}.`,'known',2200); return;
   }
-  const newItems = [];
-  newResults.forEach(result => {
-    G.discoveries++;
-    const isWin = result.id === G.puzzle.winItem;
-    const newItem = {...result, disc:G.discoveries, isWin, entering:true};
-    G.items.push(newItem);
-    newItems.push(newItem);
-  });
-  G.lastRevealedIds = new Set(newResults.map(r=>r.id));
-  render(); G.lastRevealedIds = new Set();
+
   flash([a,b],'flash-success');
   [a,b].forEach(id => spawnParticles(document.querySelector(`[data-id="${esc(id)}"]`)));
-  // Staggered splashes for each new result
-  newResults.forEach((result,i) => setTimeout(()=>showSplash(result.emoji,result.name), i*350));
-  setTimeout(()=>{ newItems.forEach(ni=>{ ni.entering=false; }); }, 600);
-  const winResult = newResults.find(r=>r.id===G.puzzle.winItem);
-  if (winResult) {
-    setStatus(`${winResult.emoji} ${winResult.name} — Victory!`,'win');
-    setTimeout(()=>{stopTimer();showWin();},1000);
-  } else if (newResults.length===1) {
-    setStatus(`${newResults[0].emoji} Discovered: ${newResults[0].name}!`,'success',2600);
-  } else {
-    setStatus(`✨ Discovered ${newResults.length} new items!`,'success',2600);
-  }
+
+  // Add each new card with a small stagger so animations don't overlap
+  newResults.forEach((result, i) => {
+    setTimeout(() => {
+      G.discoveries++;
+      const isWin  = result.id === G.puzzle.winItem;
+      const newItem = {...result, disc:G.discoveries, isWin, entering:true};
+      G.items.push(newItem);
+      G.lastRevealedIds = new Set([result.id]);
+      render();
+      G.lastRevealedIds = new Set();
+      showDiscoveryToast(result.emoji, result.name);
+      setTimeout(() => { newItem.entering = false; }, 700);
+      if (isWin) {
+        setStatus(`${result.emoji} ${result.name} — Victory!`,'win');
+        setTimeout(()=>{ stopTimer(); showWin(); }, 1200);
+      } else {
+        setStatus(`${result.emoji} Discovered: ${result.name}!`,'success',2600);
+      }
+    }, i * 320);
+  });
 }
 
 function flash(ids,cls) {
@@ -913,15 +968,26 @@ function setStatus(text,type='hint',dur) {
   },dur);
 }
 
-// ── Splash ────────────────────────────────────────────────────────────────────
-function showSplash(emoji,name) {
-  const el=document.createElement('div'); el.className='disc-splash';
-  el.innerHTML=`<span class="splash-emoji">${emoji}</span>
-    <span class="splash-label">Discovered!</span>
-    <span class="splash-name">${name}</span>`;
+// ── Discovery Toast ───────────────────────────────────────────────────────────
+// Small bottom-left chip so the player sees what just slid onto the board.
+// Multiple toasts stack vertically without overlapping.
+function showDiscoveryToast(emoji, name) {
+  const TOAST_H = 70, BASE = 20;
+  const stack = document.querySelectorAll('.discovery-toast').length;
+  const el = document.createElement('div');
+  el.className = 'discovery-toast';
+  el.style.bottom = (BASE + stack * (TOAST_H + 8)) + 'px';
+  el.innerHTML = `<span class="toast-emoji">${emoji}</span>
+    <div class="toast-body">
+      <div class="toast-cap">Discovered</div>
+      <div class="toast-name">${name}</div>
+    </div>`;
   document.body.appendChild(el);
   parseEmojis(el);
-  el.addEventListener('animationend',()=>el.remove());
+  setTimeout(() => {
+    el.style.animation = 'toastOut .25s ease forwards';
+    setTimeout(() => el.remove(), 260);
+  }, 1900);
 }
 
 // ── Particles ─────────────────────────────────────────────────────────────────
