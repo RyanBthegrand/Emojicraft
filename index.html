@@ -351,6 +351,7 @@ main {
 }
 .status-pill.hint    { background: rgba(0,0,0,.07);                         color: var(--muted); }
 .status-pill.success { background: #D1FAE5;                                  color: #065F46; }
+.status-pill.find    { background: rgba(0,0,0,.05);                         color: var(--muted); }
 .status-pill.fail    { background: #FEE2E2;                                  color: #991B1B; }
 .status-pill.known   { background: #F3F4F6;                                  color: #374151; }
 .status-pill.win     { background: linear-gradient(90deg,#FFD700,#FFAC00);  color: #5A3500; }
@@ -437,8 +438,11 @@ main {
 .toast-emoji { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
 .toast-emoji img.emoji { width: 1.5rem !important; height: 1.5rem !important; }
 .toast-body  { min-width: 0; }
-.toast-cap   { font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.toast-cap   { font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 800; }
 .toast-name  { font-size: .86rem; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* New-find variant — muted, distinct from a true discovery */
+.discovery-toast.find { border-color: var(--border); border-style: dashed; }
+.discovery-toast.find .toast-cap { color: var(--muted); }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 footer { padding: 16px; font-size: .75rem; color: var(--muted); }
@@ -662,8 +666,9 @@ function getAllResultItems() {
 
 function parseEmojis(el) {
   if (typeof twemoji === 'undefined' || !el) return;
+  // GitHub asset path has full emoji coverage (the npm /dist mirror 404s on newer codepoints)
   twemoji.parse(el, { folder:'svg', ext:'.svg',
-    base:'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/' });
+    base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' });
 }
 
 // ── Archive ───────────────────────────────────────────────────────────────────
@@ -809,6 +814,21 @@ function render() {
   parseEmojis(document.getElementById('discCircles'));
 }
 
+// Append a single new card without rebuilding the rest of the board.
+// This keeps existing cards (and any in-progress entering animations) untouched.
+function appendCard(item) {
+  const grid = document.getElementById('grid');
+  const card = buildCard(item);
+  grid.appendChild(card);
+  parseEmojis(card);
+  document.getElementById('statAtt').textContent = G.attempts;
+}
+
+// Remove the .selected highlight from the board without a full re-render.
+function clearSelectionVisual() {
+  document.querySelectorAll('.card.selected').forEach(c => c.classList.remove('selected'));
+}
+
 function buildCard(item) {
   const el = document.createElement('div');
   const cls = ['card'];
@@ -924,26 +944,44 @@ function combineItems(a,b) {
     render(); flash([a,b],'flash-known'); setStatus(`Already know how to make ${names}.`,'known',2200); return;
   }
 
+  clearSelectionVisual();
   flash([a,b],'flash-success');
   [a,b].forEach(id => spawnParticles(document.querySelector(`[data-id="${esc(id)}"]`)));
 
-  // Add each new card with a small stagger so animations don't overlap
+  const critical = getCriticalPathIds();
+
+  // Add each new card with a small stagger so animations don't overlap.
+  // Each result is either a DISCOVERY (on the critical path → panel slot)
+  // or a NEW FIND (off-path bonus → board only, no panel slot).
   newResults.forEach((result, i) => {
     setTimeout(() => {
-      G.discoveries++;
-      const isWin  = result.id === G.puzzle.winItem;
-      const newItem = {...result, disc:G.discoveries, isWin, entering:true};
+      const isWin       = result.id === G.puzzle.winItem;
+      const isDiscovery = critical.has(result.id);
+      if (isDiscovery) G.discoveries++;
+      const newItem = {...result, disc:G.items.length+1, isWin, entering:true};
       G.items.push(newItem);
-      G.lastRevealedIds = new Set([result.id]);
-      render();
-      G.lastRevealedIds = new Set();
-      showDiscoveryToast(result.emoji, result.name);
+
+      // Append only the new card — leaves existing cards (and their animations) alone
+      appendCard(newItem);
+
+      // Only discoveries touch the panel
+      if (isDiscovery) {
+        G.lastRevealedIds = new Set([result.id]);
+        renderDiscPanel();
+        parseEmojis(document.getElementById('discCircles'));
+        G.lastRevealedIds = new Set();
+      }
+
+      showDiscoveryToast(result.emoji, result.name, isDiscovery);
       setTimeout(() => { newItem.entering = false; }, 700);
+
       if (isWin) {
         setStatus(`${result.emoji} ${result.name} — Victory!`,'win');
         setTimeout(()=>{ stopTimer(); showWin(); }, 1200);
-      } else {
+      } else if (isDiscovery) {
         setStatus(`${result.emoji} Discovered: ${result.name}!`,'success',2600);
+      } else {
+        setStatus(`${result.emoji} New find: ${result.name}!`,'find',2600);
       }
     }, i * 320);
   });
@@ -971,15 +1009,15 @@ function setStatus(text,type='hint',dur) {
 // ── Discovery Toast ───────────────────────────────────────────────────────────
 // Small bottom-left chip so the player sees what just slid onto the board.
 // Multiple toasts stack vertically without overlapping.
-function showDiscoveryToast(emoji, name) {
+function showDiscoveryToast(emoji, name, isDiscovery = true) {
   const TOAST_H = 70, BASE = 20;
   const stack = document.querySelectorAll('.discovery-toast').length;
   const el = document.createElement('div');
-  el.className = 'discovery-toast';
+  el.className = 'discovery-toast' + (isDiscovery ? '' : ' find');
   el.style.bottom = (BASE + stack * (TOAST_H + 8)) + 'px';
   el.innerHTML = `<span class="toast-emoji">${emoji}</span>
     <div class="toast-body">
-      <div class="toast-cap">Discovered</div>
+      <div class="toast-cap">${isDiscovery ? '✦ Discovery' : '＋ New Find'}</div>
       <div class="toast-name">${name}</div>
     </div>`;
   document.body.appendChild(el);
