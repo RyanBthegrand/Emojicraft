@@ -65,10 +65,10 @@ const PUZZLES = {
     { ingredients: ["young_couple", "unaccepting_father"], result: [
         { id: "foolproof_plan", emoji: "📜", name: "\"Foolproof\" Plan", panel: true },
         { id: "poison", emoji: "⚗️", name: "Poison", find: true },
-        { id: "poison", emoji: "⚗️", name: "\"Poison\"", hue: 136, find: true },
+        { id: "fake_poison", emoji: "⚗️", name: "\"Poison\"", hue: 136, find: true },
     ] },
     { ingredients: ["man", "poison"], result: { id: "dead_man", emoji: "👱‍♂️", name: "Dead man", sat: 0 } },
-    { ingredients: ["woman", "poison"], result: { id: "alive_woman", emoji: "👱‍♀️", name: "Alive Woman", sat: 270 } },
+    { ingredients: ["woman", "fake_poison"], result: { id: "alive_woman", emoji: "👱‍♀️", name: "Alive Woman", sat: 270 } },
     { ingredients: ["alive_woman", "dead_man"], result: { id: "tragedy", emoji: "🎭️", name: "Tragedy" } }
   ],
   winItem: "tragedy",
